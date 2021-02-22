@@ -1,0 +1,419 @@
+---
+title: "Tratamendo de dados do dataset e-SUS Notifica"
+author: Juan Carlos Carbajal Ipenza
+output: html_notebook
+---
+
+### Livrarias
+
+```{r}
+library(ggplot2)
+```
+
+### A moda
+
+```{r}
+getMode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+```
+
+
+## Importar dados, strings vazios como NA, strings como fatores
+
+### Importando dados
+
+```{r}
+dados = read.csv("dados/dados-rs-1.csv", sep = ";", na.strings = "", stringsAsFactors = T, colClasses = c("character", "Date", "Date", "NULL", "NULL", "factor", "NULL", "NULL", "factor", "Date", "factor", "factor", "NULL", "factor", "NULL", "factor", "NULL", "factor", "NULL", "NULL", "NULL", "factor", "NULL", "factor", "NULL", "NULL", "character", "Date", "factor", "factor"))
+head(dados)
+```
+
+### Corrigindo nomes das colunas
+
+```{r}
+colnames(dados)[1] = "id"
+colnames(dados)
+```
+
+## Explorarando dados categóricos
+
+### Profissional de saúde 
+
+```{r}
+summary(dados$profissionalSaude)
+counts = table(dados$profissionalSaude)
+barplot(counts, main = "Proffisional de saúde", xlab = "Proffisional de saúde")
+```
+
+### Sexo 
+
+```{r}
+summary(dados$sexo)
+counts = table(dados$sexo)
+barplot(counts, main = "Sexo", xlab = "Sexo")
+```
+
+### Estado do teste
+
+```{r}
+summary(dados$estadoTeste)
+counts = table(dados$estadoTeste)
+barplot(counts, main = "Estado do teste", xlab = "Estado do teste")
+```
+
+
+### Tipo de teste
+
+```{r}
+summary(dados$tipoTeste)
+counts = table(dados$tipoTeste)
+barplot(counts, main = "Tipo de teste", xlab = "Tipo de teste")
+```
+
+### Resultado do teste
+
+```{r}
+summary(dados$resultadoTeste)
+counts = table(dados$resultadoTeste)
+barplot(counts, main = "Resultado do teste", xlab = "Resultado do teste")
+```
+
+### Evolução do caso
+
+```{r}
+summary(dados$evolucaoCaso)
+counts = table(dados$evolucaoCaso)
+barplot(counts, main = "Evolução do casoe", xlab = "Evolução do caso")
+```
+
+### Classificação final
+
+```{r}
+summary(dados$classificacaoFinal)
+counts = table(dados$classificacaoFinal)
+barplot(counts, main = "Classificação final", xlab = "Classificação final")
+```
+
+### Estado de residência
+
+```{r}
+summary(dados$estadoIBGE)
+counts = table(dados$estadoIBGE)
+barplot(counts, main = "Estado de residência", xlab = "Estado de residência")
+```
+
+### Municipio de residência
+
+```{r}
+summary(dados$municipioIBGE)
+counts = table(dados$municipioIBGE)
+barplot(counts, main = "Municipio de residência", xlab = "Municipio de residência")
+```
+
+### Estado de notificação
+
+```{r}
+summary(dados$estadoNotificacaoIBGE)
+counts = table(dados$estadoNotificacaoIBGE)
+barplot(counts, main = "Estado de notificação", xlab = "Estado de notificação")
+```
+
+### Municipio de notificação
+
+```{r}
+summary(dados$municipioNotificacaoIBGE)
+counts = table(dados$municipioNotificacaoIBGE)
+barplot(counts, main = "Municipio de notificação", xlab = "Municipio de notificação")
+```
+
+## Explorando dados temporais
+
+### Data do início dos síntomas
+
+```{r}
+summary(dados$dataInicioSintomas)
+counts = table(dados$dataInicioSintomas)
+barplot(counts, main = "Data do início dos síntomas", xlab = "Data do início dos síntomas")
+```
+
+### Data da notificação
+
+```{r}
+summary(dados$dataNotificacao)
+counts = table(dados$dataNotificacao)
+barplot(counts, main = "Data da notificação", xlab = "Data da notificação")
+```
+
+### Data do teste
+
+```{r}
+summary(dados$dataTeste)
+counts = table(dados$dataTeste)
+barplot(counts, main = "Data do teste", xlab = "Data do teste")
+```
+
+### Data de encerramento
+
+```{r}
+summary(dados$dataEncerramento)
+counts = table(dados$dataEncerramento)
+barplot(counts, main = "Data de encerramento", xlab = "Data de encerramento")
+```
+
+## Valores faltantes - NAs
+
+```{r}
+dim(dados[!complete.cases(dados),])[1]
+```
+
+## Tratamento e limpeza dos dados
+
+### Profissional de saúde
+
+Campo obrigatório. A dimensão tem o problema de ter dados fora de domínio e nulos. Pela documentação só são aceitos:
+
+- Sim
+- Não
+
+```{r}
+unique(dados$profissionalSaude)
+dados[!dados$profissionalSaude %in% c("Sim", "Não"),]$profissionalSaude = getMode(dados$profissionalSaude)
+
+summary(dados$profissionalSaude)
+dados$profissionalSaude = factor(dados$profissionalSaude)
+summary(dados$profissionalSaude)
+```
+
+### Idade
+
+```{r}
+dim(dados[!complete.cases(dados$idade),])[1]
+unique(dados[is.na(as.numeric(dados$idade)),]$idade)
+dados[is.na(as.numeric(dados$idade)),]$idade = "-1"
+dados = transform(dados, idade = as.integer(idade))
+```
+
+```{r}
+summary(dados$idade)
+boxplot(dados$idade)
+hist(dados$idade)
+```
+
+```{r}
+# outliers, criando um parâmetro com desvio padrâo
+desv = sd(dados$idade, na.rm = T)
+desv
+boxplot(dados$idade, outline = F)
+dados[dados$idade >= 110,]$idade
+
+dados[dados$idade >= 2 * desv,]$idade
+# atualizamos todos para mediana
+median(dados[!(dados$Salario >= 2 * desv), ]$Salario)
+dados[dados$Salario >= 2 * desv,]$Salario = median(dados[!(dados$Salario >= 2 * desv), ]$Salario)
+# checamos se sairam os outliers
+dados[dados$Salario >= 2 * desv,]$Salario
+
+
+dados[dados$idade >= 110,]$idade
+
+hist(dados$idade)
+summary(dados$idade)
+boxplot(dados$idade)
+
+summary(boxplot.stats(dados$idade)$out)
+length(boxplot.stats(dados$idade)$out)
+
+
+
+lower_bound <- quantile(dados$idade, 0.025)
+lower_bound
+upper_bound <- quantile(dados$idade, 0.975)
+upper_bound
+dados[which(dados$idade < lower_bound),]$idade
+
+
+lower_bound =  median(dados$idade) - 3 * mad(dados$idade)
+lower_bound
+upper_bound <- median(dados$idade) + 3 * mad(dados$idade)
+upper_bound
+
+```
+
+
+
+### Sexo
+
+Campo obrigatório. A dimensão tem o problema de ter dados fora de domínio e nulos. Pela documentação só são aceitos:
+
+- Feminino
+- Masculino
+
+```{r}
+unique(dados$sexo)
+dados[!dados$sexo %in% c("Feminino", "Masculino"),]$sexo = getMode(dados$sexo)
+
+summary(dados$sexo)
+dados$sexo = factor(dados$sexo)
+summary(dados$sexo)
+```
+
+### Estado do teste
+
+A dimensão tem o problema de ter dados nulos. Pela documentação só são aceitos:
+
+- Solicitado
+- Coletado
+- Concluído
+- Exame Não Solicitado
+
+Foi adicionado o nivel **Indefinido** para os dados nulos.
+
+```{r}
+unique(dados$estadoTeste)
+
+summary(dados[is.na(dados$estadoTeste) | dados$estadoTeste %in% c("null", "undefined"),]$estadoTeste)
+levels(dados$estadoTeste) = c(levels(dados$estadoTeste), "Indefinido")
+dados[is.na(dados$estadoTeste) | dados$estadoTeste %in% c("null", "undefined"),]$estadoTeste = "Indefinido"
+
+summary(dados$estadoTeste)
+dados$estadoTeste = factor(dados$estadoTeste)
+summary(dados$estadoTeste)
+```
+
+
+### Tipo de teste
+
+A dimensão tem o problema de ter dados com falta de padronização e nulos. Pela documentação só são aceitos:
+
+- RT-PCR
+- TESTE RÁPIDO - ANTICORPO
+- TESTE RÁPIDO - ANTÍGENO
+- Enzimaimunoensaio - ELISA IgM
+- Imunoensaio por Eletroquimioluminescência - ECLIA IgG
+- Quimioluminescência - CLIA.
+
+Foi adicionado o nivel **Indefinido** para os dados nulos.
+
+```{r}
+unique(dados$tipoTeste)
+
+summary(dados[is.na(dados$tipoTeste) | dados$tipoTeste %in% c("null", "undefined"),]$tipoTeste)
+levels(dados$tipoTeste) = c(levels(dados$tipoTeste), "Indefinido")
+dados[is.na(dados$tipoTeste) | dados$tipoTeste %in% c("null", "undefined"),]$tipoTeste = "Indefinido"
+
+dados[dados$tipoTeste == "Enzimaimunoensaio \023 ELISA",]$tipoTeste = "Enzimaimunoensaio - ELISA IgM"
+dados[dados$tipoTeste == "Imunoensaio por Eletroquimioluminescência \023 ECLIA",]$tipoTeste = "Imunoensaio por Eletroquimioluminescência - ECLIA IgG"
+
+summary(dados$tipoTeste)
+dados$tipoTeste = factor(dados$tipoTeste)
+summary(dados$tipoTeste)
+```
+
+### Resultado do teste
+
+A dimensão tem o problema de ter dados nulos. Pela documentação só são aceitos:
+
+- Negativo
+- Positivo
+- Inconclusivo ou Indeterminado
+
+Foi adicionado o nivel **Indefinido** para os dados nulos.
+
+```{r}
+unique(dados$resultadoTeste)
+
+summary(dados[is.na(dados$resultadoTeste) | dados$resultadoTeste %in% c("null", "undefined"),]$resultadoTeste)
+levels(dados$resultadoTeste) = c(levels(dados$resultadoTeste), "Indefinido")
+dados[is.na(dados$resultadoTeste) | dados$resultadoTeste %in% c("null", "undefined"),]$resultadoTeste = "Indefinido"
+
+summary(dados$resultadoTeste)
+dados$resultadoTeste = factor(dados$resultadoTeste)
+summary(dados$resultadoTeste)
+```
+
+### Evolução do caso
+
+A dimensão tem o problema de ter NAs. Pela documentação só são aceitos:
+
+- Cancelado
+- Ignorado
+- Em tratamento domiciliar
+- Internado em UTI
+- Internado
+- Óbito
+- Cura
+
+Foi adicionado o nivel **Indefinido** para os dados nulos.
+
+```{r}
+unique(dados$evolucaoCaso)
+
+summary(dados[is.na(dados$evolucaoCaso),]$evolucaoCaso)
+levels(dados$evolucaoCaso) = c(levels(dados$evolucaoCaso), "Indefinido")
+dados[is.na(dados$evolucaoCaso),]$evolucaoCaso = "Indefinido"
+
+summary(dados$evolucaoCaso)
+dados$evolucaoCaso = factor(dados$evolucaoCaso)
+summary(dados$evolucaoCaso)
+```
+
+### Classificação final
+
+A dimensão tem o problema de ter dados com falta de padronização e nulos. Pela documentação só são aceitos:
+
+- Descartado                        
+- Confirmado Clínico-Imagem
+- Confirmado Clínico-Epidemiológico
+- Confirmado por Critério Clínico
+- Confirmado Laboratorial
+- Síndrome Gripal Não Especificada
+
+Foi adicionado o nivel **Indefinido** para os dados nulos.
+
+```{r}
+unique(dados$classificacaoFinal)
+
+summary(dados[is.na(dados$classificacaoFinal),]$classificacaoFinal)
+levels(dados$classificacaoFinal) = c(levels(dados$classificacaoFinal), "Indefinido")
+dados[is.na(dados$classificacaoFinal),]$classificacaoFinal = "Indefinido"
+
+dados[dados$classificacaoFinal == "Confirmação Laboratorial",]$classificacaoFinal = "Confirmado Laboratorial"
+
+summary(dados$classificacaoFinal)
+dados$classificacaoFinal = factor(dados$classificacaoFinal)
+summary(dados$classificacaoFinal)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
