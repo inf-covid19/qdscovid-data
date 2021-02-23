@@ -187,12 +187,14 @@ summary(dados$profissionalSaude)
 
 ### Idade
 
+Transformando os dados a inteiros. Temos dados nulos.
+
 ```{r}
 dim(dados[!complete.cases(dados$idade),])[1]
 unique(dados[is.na(as.numeric(dados$idade)),]$idade)
-dados[is.na(as.numeric(dados$idade)),]$idade = "-1"
 dados = transform(dados, idade = as.integer(idade))
 ```
+Vendo o conteúdo dos dados
 
 ```{r}
 summary(dados$idade)
@@ -200,47 +202,19 @@ boxplot(dados$idade)
 hist(dados$idade)
 ```
 
+Segundo o Gerontology Research Group (GRG) a idade do brasileiro mais velhor vivo é de 116 anos ([GRG News announces new Brazil oldest person record](https://grg.org/GRGNews2020.html)).
+
 ```{r}
-# outliers, criando um parâmetro com desvio padrâo
-desv = sd(dados$idade, na.rm = T)
-desv
-boxplot(dados$idade, outline = F)
-dados[dados$idade >= 110,]$idade
+dados[dados$idade < 0 | dados$idade > 116,]$idade
+dados[is.na(dados$idade),]$idade
 
-dados[dados$idade >= 2 * desv,]$idade
-# atualizamos todos para mediana
-median(dados[!(dados$Salario >= 2 * desv), ]$Salario)
-dados[dados$Salario >= 2 * desv,]$Salario = median(dados[!(dados$Salario >= 2 * desv), ]$Salario)
-# checamos se sairam os outliers
-dados[dados$Salario >= 2 * desv,]$Salario
+median(dados[dados$idade >= 0 & dados$idade <= 116,]$idade, na.rm = T)
 
+dados[is.na(dados$idade) | dados$idade < 0 | dados$idade > 116,]$idade = median(dados[dados$idade >= 0 & dados$idade <= 116,]$idade, na.rm = T)
 
-dados[dados$idade >= 110,]$idade
-
-hist(dados$idade)
+dados[dados$idade < 0 | dados$idade > 116,]$idade
 summary(dados$idade)
-boxplot(dados$idade)
-
-summary(boxplot.stats(dados$idade)$out)
-length(boxplot.stats(dados$idade)$out)
-
-
-
-lower_bound <- quantile(dados$idade, 0.025)
-lower_bound
-upper_bound <- quantile(dados$idade, 0.975)
-upper_bound
-dados[which(dados$idade < lower_bound),]$idade
-
-
-lower_bound =  median(dados$idade) - 3 * mad(dados$idade)
-lower_bound
-upper_bound <- median(dados$idade) + 3 * mad(dados$idade)
-upper_bound
-
 ```
-
-
 
 ### Sexo
 
@@ -385,7 +359,13 @@ dados$classificacaoFinal = factor(dados$classificacaoFinal)
 summary(dados$classificacaoFinal)
 ```
 
+### Id
 
+Procurando se temos registros duplicados. Não temos.
+
+```{r}
+dados[duplicated(dados$Id),]
+```
 
 
 
