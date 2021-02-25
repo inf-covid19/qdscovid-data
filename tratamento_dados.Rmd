@@ -4,12 +4,6 @@ author: Juan Carlos Carbajal Ipenza
 output: html_notebook
 ---
 
-### Livrarias
-
-```{r}
-library(ggplot2)
-```
-
 ### A moda
 
 ```{r}
@@ -186,6 +180,8 @@ summary(dados$profissionalSaude)
 ```
 
 ### Idade
+
+Campo obrigatório. A dimensão tem muitos dados fora do domínio e tambvém tem nulos.
 
 Transformando os dados a inteiros. Temos dados nulos.
 
@@ -365,6 +361,71 @@ Procurando se temos registros duplicados. Não temos.
 
 ```{r}
 dados[duplicated(dados$Id),]
+```
+
+### Data do início dos síntomas
+
+Campo obrigatório. A dimensão está fora do domínio. O paciente zero viajou para a Itália entre o 9 e 21 de fevereiro do 2020. Então a data do início dos síntomas mínima possível seria o 9 de fevereiro ([Primeiro caso confirmado de Covid-19 no Brasil ocorreu em SP e completa seis meses nesta quarta](https://g1.globo.com/sp/sao-paulo/noticia/2020/08/26/primeiro-caso-confirmado-de-covid-19-no-brasil-ocorreu-em-sp-e-completa-seis-meses-nesta-quarta.ghtml)). E a máxima data seria a data atual.
+
+```{r}
+correctInterval = dados$dataInicioSintomas >= "2020-02-09" & dados$dataInicioSintomas <= Sys.Date() & !is.na(dados$dataInicioSintomas)
+median_dataInicioSintomas = median(dados[correctInterval,]$dataInicioSintomas)
+
+dados[!correctInterval,]$dataInicioSintomas = median_dataInicioSintomas
+
+summary(dados$dataInicioSintomas)
+```
+
+### Data da notificação
+
+Campo obrigatório. A dimensão está fora do domínio. O paciente zero viajou para a Itália entre o 9 e 21 de fevereiro do 2020. Então a data da notificação mínima possível seria quando ele voltou ao Brasil o 21 de fevereiro ([Primeiro caso confirmado de Covid-19 no Brasil ocorreu em SP e completa seis meses nesta quarta](https://g1.globo.com/sp/sao-paulo/noticia/2020/08/26/primeiro-caso-confirmado-de-covid-19-no-brasil-ocorreu-em-sp-e-completa-seis-meses-nesta-quarta.ghtml)). E a máxima data seria a data atual.
+
+```{r}
+correctInterval = dados$dataNotificacao >= "2020-02-21" & dados$dataNotificacao <= Sys.Date() & !is.na(dados$dataNotificacao)
+median_dataNotificacao = median(dados[correctInterval,]$dataNotificacao)
+
+dados[!correctInterval,]$dataNotificacao = median_dataNotificacao
+
+summary(dados$dataNotificacao)
+```
+
+### Data do teste
+
+A dimensão está fora do domínio. O paciente zero viajou para a Itália entre o 9 e 21 de fevereiro do 2020. Então a data do teste mínima possível seria quando ele voltou ao Brasil o 21 de fevereiro ([Primeiro caso confirmado de Covid-19 no Brasil ocorreu em SP e completa seis meses nesta quarta](https://g1.globo.com/sp/sao-paulo/noticia/2020/08/26/primeiro-caso-confirmado-de-covid-19-no-brasil-ocorreu-em-sp-e-completa-seis-meses-nesta-quarta.ghtml)). E a máxima data seria a data atual.
+
+```{r}
+correctInterval = dados$dataTeste >= "2020-02-21" & dados$dataTeste <= Sys.Date() & !is.na(dados$dataTeste)
+
+dados[!correctInterval,]$dataTeste = "2020-01-01"
+
+summary(dados$dataTeste)
+```
+
+### Data de encerramento
+
+A dimensão está fora do domínio. O paciente zero viajou para a Itália entre o 9 e 21 de fevereiro do 2020. Então a data de encerramento mínima possível seria quando ele voltou ao Brasil o 21 de fevereiro ([Primeiro caso confirmado de Covid-19 no Brasil ocorreu em SP e completa seis meses nesta quarta](https://g1.globo.com/sp/sao-paulo/noticia/2020/08/26/primeiro-caso-confirmado-de-covid-19-no-brasil-ocorreu-em-sp-e-completa-seis-meses-nesta-quarta.ghtml)). E a máxima data seria a data atual.
+
+```{r}
+correctInterval = dados$dataEncerramento >= "2020-02-21" & dados$dataEncerramento <= Sys.Date() & !is.na(dados$dataEncerramento)
+
+dados[!correctInterval,]$dataEncerramento = "2020-01-01"
+
+summary(dados$dataEncerramento)
+```
+
+## Últimas modificações
+
+Deletando a coluna dos IDs
+
+```{r}
+dados$id = NULL
+```
+
+## Resultado final dos dados
+
+```{r}
+head(dados)
+summary(dados)
 ```
 
 
