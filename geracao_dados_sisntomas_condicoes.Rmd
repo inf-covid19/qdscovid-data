@@ -1,0 +1,250 @@
+---
+title: "Geração dos dados de síntomas e condições"
+author: Juan Carlos Carbajal Ipenza
+output: html_notebook
+---
+
+### Livrarias
+
+```{r}
+library(XML)
+library(stringr)
+library(RColorBrewer)
+```
+
+## Carregando dados
+
+Carregando desde o RData que foi salvo. Também pode ser carregado desde qualquer outro arquivo. Semppre que o objeto dos dados carregados seja um dataframe.
+
+```{r}
+load("output/qdscovid_registers.Rda")
+dados$condicoes = NULL
+head(dados)
+summary(dados)
+```
+
+## Síntomas
+
+```{r}
+summary(dados$sintomas)
+head(dados$sintomas)
+```
+
+```{r}
+sintomas = as.data.frame(str_split(dados$sintomas, ",", simplify = TRUE), stringsAsFactors = TRUE)
+sintomas$count = apply(sintomas, 1, function(x) length(which(x != "")))
+head(sintomas)
+```
+
+```{r}
+dados = as.data.frame(lapply(dados, rep, sintomas$count))
+head(dados)
+```
+
+```{r}
+save(dados, file = "output/qdscovid_symptoms.Rda")
+rm(dados)
+save(sintomas, file = "output/sintomas.Rda")
+rm(sintomas)
+```
+
+```{r}
+load("output/sintomas.Rda")
+sintomas_list = apply(sintomas, 1, function(x) x[seq_len(x[11])])
+rm(sintomas)
+save(sintomas_list, file = "output/sintomas_list.Rda")
+rm(sintomas_list)
+```
+
+```{r}
+load("output/sintomas_list.Rda")
+sintomas_list = str_trim(unlist(sintomas_list))
+head(sintomas_list)
+```
+
+```{r}
+load("output/qdscovid_symptoms.Rda")
+dados$sintomas = sintomas_list
+rm(sintomas_list)
+dados = transform(dados, sintomas = as.factor(sintomas))
+head(dados)
+```
+
+```{r}
+save(dados, file = "output/qdscovid_symptoms.Rda")
+
+if (file.exists("output/sintomas.Rda")) {
+  file.remove("output/sintomas.Rda")
+}
+
+if (file.exists("output/sintomas_list.Rda")) {
+  file.remove("output/sintomas_list.Rda")
+}
+```
+
+```{r}
+load("output/qdscovid_symptoms.Rda")
+
+levels(dados$sintomas)
+
+counts = table(dados$sintomas)
+barplot(sort(counts, decreasing = TRUE)[1:10])
+rm(counts)
+```
+
+```{r}
+levels(dados$sintomas) = c(levels(dados$sintomas), "Indefinido")
+
+dados[dados$sintomas == "null",]$sintomas = "Indefinido"
+dados[dados$sintomas == "undefined",]$sintomas = "Indefinido"
+dados[dados$sintomas == "calafrios",]$sintomas = "calafrio"
+dados[dados$sintomas == "coriza",]$sintomas = "Coriza"
+dados[dados$sintomas == "diarréia",]$sintomas = "diarreia"
+dados[dados$sintomas == "Dispineia" | dados$sintomas == "Dispnéia",]$sintomas = "Dispneia"
+dados[dados$sintomas == "Dor De Cabeça",]$sintomas = "Dor de Cabeça"
+dados[dados$sintomas == "Dor De Gargante" | dados$sintomas == "Dor De Garganta",]$sintomas = "Dor de Garganta"
+dados[dados$sintomas == "falda de paladar e olfato" | dados$sintomas == "falta de olfato e paladar",]$sintomas = "falta de paladar e olfato"
+dados[dados$sintomas == "nausea",]$sintomas = "nauseas"
+dados[dados$sintomas == "Outros: Paciente assintomático" | dados$sintomas == "Paciente assintomático",]$sintomas = "Assintomático"
+dados[dados$sintomas %in% c("olfato e paladar", "perca alfato e paladar", "perca de olfato e paladar", "perca de olfato paladar", "perda de olfato e paladar.", "perda de paladar e olfato", "perda do paladar", "perda do paladar e olfato", "perda olfato e paladar", "perda paladar e olfato"),]$sintomas = "perda de olfato e paladar"
+dados[dados$sintomas == "perca de palada",]$sintomas = "perda de paladar"
+dados[dados$sintomas == "perda do cheiro" | dados$sintomas == "olfato",]$sintomas = "perca de olfato"
+dados[dados$sintomas == "Pigarro",]$sintomas = "pigarro"
+
+dados$sintomas = factor(dados$sintomas)
+
+save(dados, file = "output/qdscovid_symptoms.Rda")
+
+counts = table(dados$sintomas)
+sort(counts, decreasing = TRUE)
+
+colb = brewer.pal(12, "Set3")
+barplot(sort(counts, decreasing = TRUE)[1:12], horiz = TRUE, las = 1, col = colb, cex.names = 0.7, cex.axis = 0.7) 
+rm(counts, colb)
+```
+
+
+```{r}
+load("output/qdscovid_symptoms.Rda")
+
+dados[!(dados$sintomas %in% names(counts[counts >= 2000])),]$sintomas = "Outros"
+
+dados$sintomas = factor(dados$sintomas)
+
+levels(dados$sintomas) = c("Assint.", "Coriza", "Dif. de resp.", "Dispneia", "Dist. Gusta.", "Dist. Olfa.", "Dor de cab.", "Dor de Garg.", "Febre", "Outros", "Tosse", "Indefinido")
+
+save(dados, file = "output/qdscovid_symptoms2.Rda")
+
+counts = table(dados$sintomas)
+sort(counts, decreasing = TRUE)
+
+colb = brewer.pal(12, "Set3")
+barplot(sort(counts, decreasing = TRUE), horiz = TRUE, las = 1, col = colb, cex.names = 0.5, cex.axis = 0.5) 
+rm(counts, colb)
+```
+
+## Condições
+
+```{r}
+load("output/qdscovid_registers.Rda")
+dados$sintomas = NULL
+head(dados)
+summary(dados)
+```
+
+
+```{r}
+summary(dados$condicoes)
+head(dados$condicoes)
+```
+
+```{r}
+condicoes = as.data.frame(str_split(dados$condicoes, ",", simplify = TRUE), stringsAsFactors = TRUE)
+condicoes$count = apply(condicoes, 1, function(x) length(which(x != "")))
+head(condicoes)
+```
+
+```{r}
+dados = as.data.frame(lapply(dados, rep, condicoes$count))
+head(dados)
+```
+
+```{r}
+save(dados, file = "output/qdscovid_conditions.Rda")
+rm(dados)
+save(condicoes, file = "output/condicoes.Rda")
+rm(condicoes)
+```
+
+```{r}
+load("output/condicoes.Rda")
+condicoes_list = apply(condicoes, 1, function(x) x[seq_len(x[11])])
+rm(condicoes)
+save(condicoes_list, file = "output/condicoes_list.Rda")
+rm(condicoes_list)
+```
+
+```{r}
+load("output/condicoes_list.Rda")
+condicoes_list = str_trim(unlist(condicoes_list))
+head(condicoes_list)
+```
+
+```{r}
+load("output/qdscovid_conditions.Rda")
+dados$condicoes = condicoes_list
+rm(condicoes_list)
+dados = transform(dados, condicoes = as.factor(condicoes))
+head(dados)
+```
+
+```{r}
+save(dados, file = "output/qdscovid_conditions.Rda")
+
+if (file.exists("output/condicoes.Rda")) {
+  file.remove("output/condicoes.Rda")
+}
+
+if (file.exists("output/condicoes_list.Rda")) {
+  file.remove("output/condicoes_list.Rda")
+}
+```
+
+```{r}
+load("output/qdscovid_conditions.Rda")
+
+levels(dados$condicoes)
+
+counts = table(dados$condicoes)
+barplot(sort(counts, decreasing = TRUE)[1:10])
+rm(counts)
+```
+
+
+
+```{r}
+load("output/qdscovid_conditions.Rda")
+
+dados[!(dados$sintomas %in% names(counts[counts >= 2000])),]$sintomas = "Outros"
+
+dados$sintomas = factor(dados$sintomas)
+
+levels(dados$sintomas) = c("Assint.", "Coriza", "Dif. de resp.", "Dispneia", "Dist. Gusta.", "Dist. Olfa.", "Dor de cab.", "Dor de Garg.", "Febre", "Outros", "Tosse", "Indefinido")
+
+save(dados, file = "output/qdscovid_symptoms2.Rda")
+
+counts = table(dados$sintomas)
+sort(counts, decreasing = TRUE)
+
+colb = brewer.pal(12, "Set3")
+barplot(sort(counts, decreasing = TRUE), horiz = TRUE, las = 1, col = colb, cex.names = 0.5, cex.axis = 0.5) 
+rm(counts, colb)
+```
+
+
+
+
+
+
+
+

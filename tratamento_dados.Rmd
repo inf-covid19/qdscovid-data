@@ -43,7 +43,15 @@ Para importar um csv
 ```{r}
 importCSV <- function(file) {
    print(paste("Importing ", file, " ...", sep = ""))
-   csv = read.csv(file, sep = ";", na.strings = "", stringsAsFactors = T, colClasses = c("character", "character", "character", "NULL", "NULL", "factor", "NULL", "NULL", "factor", "character", "factor", "factor", "NULL", "factor", "NULL", "factor", "NULL", "factor", "NULL", "NULL", "factor", "NULL", "factor", "NULL", "NULL", "character", "character", "factor", "factor")) 
+   csv = read.csv(file, sep = ";", na.strings = "", stringsAsFactors = T,colClasses = c(
+      "character", "character", "character", "NULL", # id, dataNotificacao, dataInicioSintomas, dataNascimento
+      "character", "factor", "NULL", "character", # sintomas, profissionalSaude, cbo, condicoes
+      "factor", "character", "factor", "factor", # estadoTeste, dataTeste, tipoTeste, resultadoTeste
+      "NULL", "factor", "NULL", "factor", # paisOrigem, sexo, estado, estadoIBGE
+      "NULL", "factor", "NULL", "NULL", # municipio, municipioIBGE, origem, estadoNotificacao
+      "factor", "NULL", "factor", "NULL", # estadoNotificacaoIBGE, municipioNotificacao, municipioNotificacaoIBGE, excluido
+      "NULL", "character", "character", "factor", # validado, idade, dataEncerramento, evolucaoCaso
+      "factor")) # classificacaoFinal
    return(csv)
 }
 ```
@@ -55,6 +63,8 @@ myfiles = list.files(path="dados", pattern="*.csv", full.names=TRUE)
 myfiles
 
 dados = ldply(myfiles, importCSV)
+
+colnames(dados)
 dim(dados)
 head(dados)
 ```
@@ -70,7 +80,7 @@ dados$validado = NULL
 colnames(dados)
 ```
 
-## Explorarando dados categóricos
+## Explorando dados categóricos
 
 ### Profissional de saúde 
 
@@ -169,7 +179,6 @@ Antes de explorar os dados temporais. Os dados são convertidos para Date:
 dados = transform(dados, dataInicioSintomas = as.Date(dataInicioSintomas, "%Y-%m-%d"), dataNotificacao = as.Date(dataNotificacao, "%Y-%m-%d"), dataTeste = as.Date(dataTeste, "%Y-%m-%d"), dataEncerramento = as.Date(dataEncerramento, "%Y-%m-%d"))
 ```
 
-
 ### Data do início dos síntomas
 
 ```{r}
@@ -230,6 +239,7 @@ dados[is.na(dados$profissionalSaude),]$profissionalSaude = myMode
 
 summary(dados$profissionalSaude)
 dados$profissionalSaude = factor(dados$profissionalSaude)
+levels(dados$profissionalSaude) = c("Nao", "Sim")
 summary(dados$profissionalSaude)
 ```
 
@@ -242,6 +252,7 @@ Transformando os dados a inteiros.
 ```{r}
 dados = transform(dados, idade = as.integer(idade))
 ```
+
 Vendo o conteúdo dos dados
 
 ```{r}
@@ -298,6 +309,7 @@ dados[is.na(dados$estadoTeste) | dados$estadoTeste %in% c("null", "undefined"),]
 
 summary(dados$estadoTeste)
 dados$estadoTeste = factor(dados$estadoTeste)
+levels(dados$estadoTeste) = c("Coletado", "Concluido", "Exame Nao Solicitado", "Solicitado", "Indefinido")
 summary(dados$estadoTeste)
 ```
 
@@ -328,6 +340,7 @@ dados[dados$tipoTeste == "Teste rápido",]$tipoTeste = "TESTE RÁPIDO - ANTICORP
 
 summary(dados$tipoTeste)
 dados$tipoTeste = factor(dados$tipoTeste)
+levels(dados$tipoTeste) = c("ELISA IgM", "ECLIA IgG", "CLIA", "RT-PCR", "ANTICORPO", "ANTIGENO", "Indefinido")
 summary(dados$tipoTeste)
 ```
 
@@ -376,6 +389,7 @@ dados[is.na(dados$evolucaoCaso),]$evolucaoCaso = "Indefinido"
 
 summary(dados$evolucaoCaso)
 dados$evolucaoCaso = factor(dados$evolucaoCaso)
+levels(dados$evolucaoCaso)[7] = "Obito"
 summary(dados$evolucaoCaso)
 ```
 
@@ -412,6 +426,7 @@ dados[dados$classificacaoFinal == "Sindrome Gripal Nao Especificada",]$classific
 
 summary(dados$classificacaoFinal)
 dados$classificacaoFinal = factor(dados$classificacaoFinal)
+levels(dados$classificacaoFinal) = c("Cli.-Epid.", "Cli.-Img.", "Lab.", "Cri. Cli.", "Desc.", "SGNE", "Indefinido")
 summary(dados$classificacaoFinal)
 ```
 
@@ -420,7 +435,7 @@ summary(dados$classificacaoFinal)
 Campo obrigatório. A dimensão tem problemas de nulos.
 
 ```{r}
-unique(dados$estadoIBGE)
+levels(dados$estadoIBGE)
 
 levels(dados$estadoIBGE)[2] = "Indefinido"
 
@@ -432,11 +447,11 @@ summary(dados$estadoIBGE)
 Campo obrigatório. A dimensão tem problemas de nulos.
 
 ```{r}
-detect = str_detect(unique(dados$municipioIBGE), regex("[0-9][0-9][0-9][0-9][0-9][0-9][0-9]"))
+detect = str_detect(levels(dados$municipioIBGE), regex("[0-9][0-9][0-9][0-9][0-9][0-9][0-9]"))
 indi = which(!detect)
-unique(dados$municipioIBGE)[indi]
+levels(dados$municipioIBGE)[indi]
 
-levels(dados$municipioIBGE)[23] = "Indefinido"
+levels(dados$municipioIBGE)[indi] = "Indefinido"
 
 summary(dados$municipioIBGE)
 ```
@@ -446,7 +461,7 @@ summary(dados$municipioIBGE)
 Campo gerado pelo sistema. A dimensão tem problemas de nulos.
 
 ```{r}
-unique(dados$estadoNotificacaoIBGE)
+levels(dados$estadoNotificacaoIBGE)
 
 levels(dados$estadoNotificacaoIBGE)[28] = "Indefinido"
 
@@ -460,11 +475,11 @@ summary(dados$estadoNotificacaoIBGE)
 Campo gerado pelo sistema. A dimensão tem problemas de nulos.
 
 ```{r}
-detect = str_detect(unique(dados$municipioNotificacaoIBGE), regex("[0-9][0-9][0-9][0-9][0-9][0-9][0-9]"))
+detect = str_detect(levels(dados$municipioNotificacaoIBGE), regex("[0-9][0-9][0-9][0-9][0-9][0-9][0-9]"))
 indi = which(!detect)
-unique(dados$municipioNotificacaoIBGE)[indi]
+levels(dados$municipioNotificacaoIBGE)[indi]
 
-levels(dados$municipioNotificacaoIBGE)[324] = "Indefinido"
+levels(dados$municipioNotificacaoIBGE)[indi] = "Indefinido"
 
 dados[is.na(dados$municipioNotificacaoIBGE),]$municipioNotificacaoIBGE = "Indefinido"
 
@@ -481,10 +496,16 @@ dados[duplicated(dados$Id),]
 
 ### Data do início dos síntomas
 
+Data quando os dados foram pegos.
+
+```{r}
+dateDownload = "2021-02-26"
+```
+
 Campo obrigatório. A dimensão está fora do domínio. O paciente zero viajou para a Itália entre o 9 e 21 de fevereiro do 2020. Então a data do início dos síntomas mínima possível seria o 9 de fevereiro ([Primeiro caso confirmado de Covid-19 no Brasil ocorreu em SP e completa seis meses nesta quarta](https://g1.globo.com/sp/sao-paulo/noticia/2020/08/26/primeiro-caso-confirmado-de-covid-19-no-brasil-ocorreu-em-sp-e-completa-seis-meses-nesta-quarta.ghtml)). E a máxima data seria a data atual.
 
 ```{r}
-correctInterval = dados$dataInicioSintomas >= "2020-02-09" & dados$dataInicioSintomas <= Sys.Date() & !is.na(dados$dataInicioSintomas)
+correctInterval = dados$dataInicioSintomas >= "2020-02-09" & dados$dataInicioSintomas <= dateDownload & !is.na(dados$dataInicioSintomas)
 median_dataInicioSintomas = median(dados[correctInterval,]$dataInicioSintomas)
 
 dados[!correctInterval,]$dataInicioSintomas = median_dataInicioSintomas
@@ -497,7 +518,7 @@ summary(dados$dataInicioSintomas)
 Campo obrigatório. A dimensão está fora do domínio. O paciente zero viajou para a Itália entre o 9 e 21 de fevereiro do 2020. Então a data da notificação mínima possível seria quando ele voltou ao Brasil o 21 de fevereiro ([Primeiro caso confirmado de Covid-19 no Brasil ocorreu em SP e completa seis meses nesta quarta](https://g1.globo.com/sp/sao-paulo/noticia/2020/08/26/primeiro-caso-confirmado-de-covid-19-no-brasil-ocorreu-em-sp-e-completa-seis-meses-nesta-quarta.ghtml)). E a máxima data seria a data atual.
 
 ```{r}
-correctInterval = dados$dataNotificacao >= "2020-02-21" & dados$dataNotificacao <= Sys.Date() & !is.na(dados$dataNotificacao)
+correctInterval = dados$dataNotificacao >= "2020-02-21" & dados$dataNotificacao <= dateDownload & !is.na(dados$dataNotificacao)
 median_dataNotificacao = median(dados[correctInterval,]$dataNotificacao)
 
 dados[!correctInterval,]$dataNotificacao = median_dataNotificacao
@@ -510,7 +531,7 @@ summary(dados$dataNotificacao)
 A dimensão está fora do domínio. O paciente zero viajou para a Itália entre o 9 e 21 de fevereiro do 2020. Então a data do teste mínima possível seria quando ele voltou ao Brasil o 21 de fevereiro ([Primeiro caso confirmado de Covid-19 no Brasil ocorreu em SP e completa seis meses nesta quarta](https://g1.globo.com/sp/sao-paulo/noticia/2020/08/26/primeiro-caso-confirmado-de-covid-19-no-brasil-ocorreu-em-sp-e-completa-seis-meses-nesta-quarta.ghtml)). E a máxima data seria a data atual.
 
 ```{r}
-correctInterval = dados$dataTeste >= "2020-02-21" & dados$dataTeste <= Sys.Date() & !is.na(dados$dataTeste)
+correctInterval = dados$dataTeste >= "2020-02-21" & dados$dataTeste <= dateDownload & !is.na(dados$dataTeste)
 
 dados[!correctInterval,]$dataTeste = "2020-01-01"
 
@@ -522,7 +543,7 @@ summary(dados$dataTeste)
 A dimensão está fora do domínio. O paciente zero viajou para a Itália entre o 9 e 21 de fevereiro do 2020. Então a data de encerramento mínima possível seria quando ele voltou ao Brasil o 21 de fevereiro ([Primeiro caso confirmado de Covid-19 no Brasil ocorreu em SP e completa seis meses nesta quarta](https://g1.globo.com/sp/sao-paulo/noticia/2020/08/26/primeiro-caso-confirmado-de-covid-19-no-brasil-ocorreu-em-sp-e-completa-seis-meses-nesta-quarta.ghtml)). E a máxima data seria a data atual.
 
 ```{r}
-correctInterval = dados$dataEncerramento >= "2020-02-21" & dados$dataEncerramento <= Sys.Date() & !is.na(dados$dataEncerramento)
+correctInterval = dados$dataEncerramento >= "2020-02-21" & dados$dataEncerramento <= dateDownload & !is.na(dados$dataEncerramento)
 
 dados[!correctInterval,]$dataEncerramento = "2020-01-01"
 
@@ -539,6 +560,8 @@ dados$id = NULL
 
 ## Resultado final dos dados
 
+Mostrando os dados já tratados, menos síntomas nem condições
+
 ```{r}
 head(dados)
 summary(dados)
@@ -546,46 +569,26 @@ summary(dados)
 
 ## Salvando dados de registros num csv
 
+São salvos os registros de 1 milhão em 1 milhão 
+
 ```{r}
+dir.create("./output/qdscovid_registers/", showWarnings = FALSE, recursive = TRUE)
 number_files = as.integer(dim(dados)[1] / 1000000)
 for (num_file in 1:number_files) {
    ini = 1 + (num_file - 1) * 1000000
    fim = num_file * 1000000
-   write.csv(dados[ini:fim,], file = paste("output/qdscovid_registers_", num_file, ".csv", sep = ""), quote = FALSE, sep = ";", row.names = FALSE)
+   write.table(dados[ini:fim,], file = paste("output/qdscovid_registers/qdscovid_registers_", num_file, ".csv", sep = ""), quote = FALSE, row.names = FALSE, sep = ";", eol = "\n")
 }
 num_file = num_file + 1
 ini = fim + 1
 fim = dim(dados)[1]
-write.csv(dados[ini:fim,], file = paste("output/qdscovid_registers_", num_file, ".csv", sep = ""), quote = FALSE, sep = ";", row.names = FALSE)
+write.table(dados[ini:fim,], file = paste("output/qdscovid_registers/qdscovid_registers_", num_file, ".csv", sep = ""), quote = FALSE, row.names = FALSE, sep = ";", eol = "\n")
 ```
 
+## Salvando objeto dos dados
 
+Os dados são salvos num objeto do R
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```{r}
+save(dados, file = "output/qdscovid_registers.Rda")
+```
