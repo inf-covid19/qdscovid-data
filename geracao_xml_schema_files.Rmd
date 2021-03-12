@@ -174,6 +174,51 @@ dir.create("./output/", showWarnings = FALSE, recursive = TRUE)
 saveXML(docXML, file = "output/qdscovid_symptoms.xml")
 ```
 
+# Cubo de condições
+
+## Carregando dados
+
+Carregando desde o RData que foi salvo. Também pode ser carregado desde qualquer outro arquivo. Sempre que o objeto dos dados carregados seja um dataframe.
+
+```{r}
+load("output/qdscovid_conditions.Rda")
+head(dados)
+summary(dados)
+```
+
+## Gerando XML schema file
+
+Procedimentos para gerar os XML schema file de cada cubo de acordo ao conhecimento das dimensões.
+
+```{r}
+docXML = newXMLDoc()
+xmlTop = newXMLNode("config", attrs = c(ver = "1.0"), doc = docXML)
+newXMLNode("input-dir", "qdscovid-data/output/", parent = xmlTop)
+newXMLNode("output", "qdscovid_conditions", parent = xmlTop)
+newXMLNode("output-dir", "./output", parent = xmlTop)
+xmlSchema = newXMLNode("schema", parent = xmlTop)
+getCategoricalDiscreteXML(dados, "profissionalSaude", xmlSchema)
+getCategoricalRangeXML(dados, "idade", xmlSchema, 5, 91)
+getCategoricalDiscreteXML(dados, "sexo", xmlSchema)
+getCategoricalDiscreteXML(dados, "estadoTeste", xmlSchema)
+getCategoricalDiscreteXML(dados, "tipoTeste", xmlSchema)
+getCategoricalDiscreteXML(dados, "resultadoTeste", xmlSchema)
+getCategoricalDiscreteXML(dados, "evolucaoCaso", xmlSchema)
+getCategoricalDiscreteXML(dados, "classificacaoFinal", xmlSchema)
+getCategoricalDiscreteXML(dados, "condicoes", xmlSchema)
+getTemporalXML("dataInicioSintomas", xmlSchema)
+getTemporalXML("dataNotificacao", xmlSchema)
+getCategoricalDiscreteXML(dados, "estadoNotificacaoIBGE", xmlSchema, sortBin = TRUE)
+getCategoricalDiscreteXML(dados, "municipioNotificacaoIBGE", xmlSchema, sortBin = TRUE)
+xmlTop
+```
+
+Salvando o XML schema file num arquivo.
+
+```{r}
+dir.create("./output/", showWarnings = FALSE, recursive = TRUE)
+saveXML(docXML, file = "output/qdscovid_conditions.xml")
+```
 
 
 
