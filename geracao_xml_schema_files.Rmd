@@ -12,19 +12,9 @@ Documento feito para gerar os XML schema files para puder gerar os cubos.
 library(XML)
 ```
 
-## Carregando dados
-
-Carregando desde o RData que foi salvo. Também pode ser carregado desde qualquer outro arquivo. Semppre que o objeto dos dados carregados seja um dataframe.
-
-```{r}
-load("output/qdscovid_registers.Rda")
-head(dados)
-summary(dados)
-```
-
 ## Definindo funções das dimensões
 
-São definidos funções para gerar os XMLs de cada dimensão. De acordo, ao tipo de cada dimensão:
+São definidos funções para gerar os XMLs de cada dimensão. De acordo ao tipo de cada dimensão:
 
 ### Dimensões categóricas
 
@@ -51,7 +41,7 @@ getCategoricalDiscreteXML <- function(data, nameOfCat, parentNode, sortBin = FAL
 Para definir uma dimensão categórica desde um valor inteiro ou numérico dividido por rangos. Cada categoría seria cada rango dos números.
 
 ```{r}
-getCategoricalRangeXML <- function(data, nameOfCat, parentNode, interval = 10) {
+getCategoricalRangeXML <- function(data, nameOfCat, parentNode, interval = 10, maxIntervalMinLimit = -1) {
    xmlCategorial = newXMLNode("categorical", attrs = c(index = nameOfCat, type = "range", name = nameOfCat), parent = parentNode)
    xmlAttr = newXMLNode("attributes", parent = xmlCategorial)
    index = grep(nameOfCat, colnames(data))
@@ -59,11 +49,15 @@ getCategoricalRangeXML <- function(data, nameOfCat, parentNode, interval = 10) {
    actualMinBin = min(data[,index])
    
    while (actualMinBin < max(data[,index])) {
-      if (actualMinBin + interval > max(data[,index])) {
+      modBin = actualMinBin %% interval
+      maxBin = actualMinBin + interval - modBin
+      
+      if (maxBin > max(data[,index])) {
          maxBin = max(data[,index])
       }
-      else {
-         maxBin = actualMinBin + interval
+      
+      if (maxIntervalMinLimit != -1 & maxIntervalMinLimit <= maxBin) {
+         maxBin = max(data[,index])
       }
       
       
@@ -71,7 +65,7 @@ getCategoricalRangeXML <- function(data, nameOfCat, parentNode, interval = 10) {
       xmlMin = newXMLNode("min", actualMinBin, parent = xmlBin)
       xmlMax = newXMLNode("max", maxBin, parent = xmlBin)
       
-      actualMinBin = actualMinBin + interval
+      actualMinBin = maxBin + 1
    }
 }
 ```
@@ -89,13 +83,21 @@ getTemporalXML <- function(nameOfCat, parentNode, format = "%Y-%m-%d", interval 
 }
 ```
 
+# Cubo de registros
+
+## Carregando dados
+
+Carregando desde o RData que foi salvo. Também pode ser carregado desde qualquer outro arquivo. Sempre que o objeto dos dados carregados seja um dataframe.
+
+```{r}
+load("output/qdscovid_registers.Rda")
+head(dados)
+summary(dados)
+```
+
 ## Gerando XML schema file
 
 Procedimentos para gerar os XML schema file de cada cubo de acordo ao conhecimento das dimensões.
-
-### Cubo de registers
-
-Gerando objeto XML.
 
 ```{r}
 docXML = newXMLDoc()
@@ -105,21 +107,17 @@ newXMLNode("output", "qdscovid_registers", parent = xmlTop)
 newXMLNode("output-dir", "./output", parent = xmlTop)
 xmlSchema = newXMLNode("schema", parent = xmlTop)
 getCategoricalDiscreteXML(dados, "profissionalSaude", xmlSchema)
-getCategoricalRangeXML(dados, "idade", xmlSchema)
+getCategoricalRangeXML(dados, "idade", xmlSchema, 5, 91)
 getCategoricalDiscreteXML(dados, "sexo", xmlSchema)
 getCategoricalDiscreteXML(dados, "estadoTeste", xmlSchema)
 getCategoricalDiscreteXML(dados, "tipoTeste", xmlSchema)
 getCategoricalDiscreteXML(dados, "resultadoTeste", xmlSchema)
 getCategoricalDiscreteXML(dados, "evolucaoCaso", xmlSchema)
 getCategoricalDiscreteXML(dados, "classificacaoFinal", xmlSchema)
-getCategoricalDiscreteXML(dados, "estadoIBGE", xmlSchema, sortBin = TRUE)
-getCategoricalDiscreteXML(dados, "municipioIBGE", xmlSchema, sortBin = TRUE)
-getCategoricalDiscreteXML(dados, "estadoNotificacaoIBGE", xmlSchema, sortBin = TRUE)
-getCategoricalDiscreteXML(dados, "municipioNotificacaoIBGE", xmlSchema, sortBin = TRUE)
 getTemporalXML("dataInicioSintomas", xmlSchema)
 getTemporalXML("dataNotificacao", xmlSchema)
-getTemporalXML("dataTeste", xmlSchema)
-getTemporalXML("dataEncerramento", xmlSchema)
+getCategoricalDiscreteXML(dados, "estadoNotificacaoIBGE", xmlSchema, sortBin = TRUE)
+getCategoricalDiscreteXML(dados, "municipioNotificacaoIBGE", xmlSchema, sortBin = TRUE)
 xmlTop
 ```
 
@@ -129,3 +127,72 @@ Salvando o XML schema file num arquivo.
 dir.create("./output/", showWarnings = FALSE, recursive = TRUE)
 saveXML(docXML, file = "output/qdscovid_registers.xml")
 ```
+
+# Cubo de síntomas
+
+## Carregando dados
+
+Carregando desde o RData que foi salvo. Também pode ser carregado desde qualquer outro arquivo. Sempre que o objeto dos dados carregados seja um dataframe.
+
+```{r}
+load("output/qdscovid_symptoms.Rda")
+head(dados)
+summary(dados)
+```
+
+## Gerando XML schema file
+
+Procedimentos para gerar os XML schema file de cada cubo de acordo ao conhecimento das dimensões.
+
+```{r}
+docXML = newXMLDoc()
+xmlTop = newXMLNode("config", attrs = c(ver = "1.0"), doc = docXML)
+newXMLNode("input-dir", "qdscovid-data/output/", parent = xmlTop)
+newXMLNode("output", "qdscovid_symptoms", parent = xmlTop)
+newXMLNode("output-dir", "./output", parent = xmlTop)
+xmlSchema = newXMLNode("schema", parent = xmlTop)
+getCategoricalDiscreteXML(dados, "profissionalSaude", xmlSchema)
+getCategoricalRangeXML(dados, "idade", xmlSchema, 5, 91)
+getCategoricalDiscreteXML(dados, "sexo", xmlSchema)
+getCategoricalDiscreteXML(dados, "estadoTeste", xmlSchema)
+getCategoricalDiscreteXML(dados, "tipoTeste", xmlSchema)
+getCategoricalDiscreteXML(dados, "resultadoTeste", xmlSchema)
+getCategoricalDiscreteXML(dados, "evolucaoCaso", xmlSchema)
+getCategoricalDiscreteXML(dados, "classificacaoFinal", xmlSchema)
+getCategoricalDiscreteXML(dados, "sintomas", xmlSchema)
+getTemporalXML("dataInicioSintomas", xmlSchema)
+getTemporalXML("dataNotificacao", xmlSchema)
+getCategoricalDiscreteXML(dados, "estadoNotificacaoIBGE", xmlSchema, sortBin = TRUE)
+getCategoricalDiscreteXML(dados, "municipioNotificacaoIBGE", xmlSchema, sortBin = TRUE)
+xmlTop
+```
+
+Salvando o XML schema file num arquivo.
+
+```{r}
+dir.create("./output/", showWarnings = FALSE, recursive = TRUE)
+saveXML(docXML, file = "output/qdscovid_symptoms.xml")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
