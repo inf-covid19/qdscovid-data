@@ -1,0 +1,125 @@
+---
+title: "Verificando qualidade dos dados"
+author: "Juan Carlos Carbajal Ipenza"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+### Livrarias
+
+```{r}
+library(plyr)
+library(readr)
+library(stringr)
+```
+
+## Poucos dados em Ceará e Pernambuco
+
+Verificar por qual razão a gente tem poucos dados nesses estados.
+
+### Pre-processamento
+
+Para importar um csv.
+
+```{r}
+importCSV <- function(file) {
+   print(paste("Importing ", file, " ...", sep = ""))
+   csv = read.csv(file, sep = ";", na.strings = "", stringsAsFactors = T,colClasses = c(
+      "character", "character", "character", "NULL", # id, dataNotificacao, dataInicioSintomas, dataNascimento
+      "character", "factor", "NULL", "character", # sintomas, profissionalSaude, cbo, condicoes
+      "factor", "character", "factor", "factor", # estadoTeste, dataTeste, tipoTeste, resultadoTeste
+      "NULL", "factor", "NULL", "factor", # paisOrigem, sexo, estado, estadoIBGE
+      "NULL", "factor", "NULL", "NULL", # municipio, municipioIBGE, origem, estadoNotificacao
+      "factor", "NULL", "factor", "NULL", # estadoNotificacaoIBGE, municipioNotificacao, municipioNotificacaoIBGE, excluido
+      "NULL", "character", "character", "factor", # validado, idade, dataEncerramento, evolucaoCaso
+      "factor")) # classificacaoFinal
+   return(csv)
+}
+```
+
+Processando todos os cSV's.
+
+```{r}
+myfiles = list.files(path="dados", pattern="*.csv", full.names=TRUE)
+myfiles
+
+dados = ldply(myfiles, importCSV)
+
+colnames(dados)
+dim(dados)
+head(dados)
+```
+
+Corrigindo colunas.
+
+```{r}
+colnames(dados)[1] = "id"
+dados$estadoNotificacao = NULL
+dados$municipioNotificacao = NULL
+dados$validado = NULL
+
+colnames(dados)
+```
+
+### Verificando dados dos estados com poucos dados
+
+Os UF's para os estados de Ceará e Pernambuco são 23 e 26 respetivamente. Pelo que vemos nos dados tem 12 246 e 23 898 dados. Na visualização que a gente fez temos a mesma quantidade de dados. Ou seja, a gente não apagou dados no tratamento.
+
+```{r}
+summary(dados$estadoNotificacaoIBGE)
+```
+
+Olhando o gráfico dos estados com menos de 500 000 atendimentos podemos notar que só os estados analisados tem menos de 100 000 atendimentos. Os seguintes seriam Amapá e Acre com 148 328 e 173 946 respetivamente.
+
+```{r}
+counts = table(dados$estadoNotificacaoIBGE)
+barplot(counts[counts < 500000], main = "Estado da notificação", xlab = "Estado da notificação")
+```
+
+Verificando os dados com os estados de residência e não com os estados de notificação vemos que temos melhores dados nesses estados analisados.
+
+```{r}
+summary(dados$estadoIBGE)
+```
+
+Olhando o gráfico dos estados com menos de 500 000 atendimentos, a gente nota que os estados de Paraná, Amapá e Acre têm 125 978, 157 708 e 179 812 atendimentos. É interesante ver que os dois últimos estados têm quase a mesma quantidade que tem nos valores de notificação. Porém o estado de Paraná tem um decremento de quase 900 mil atendimentos.
+
+```{r}
+counts = table(dados$estadoIBGE)
+barplot(counts[counts < 500000], main = "Estado de residência", xlab = "Estado de residência")
+```
+
+### Considerações finais
+
+Os dados de estado de notificação nos estados estudiados tem poucos dados. Além disso o estado de notificação tem como 3,2 milhões de dados indefinidos (NA's e undefined nos dados originais) comparado ao estado de residência que só tem 36578 indefinidos. Olhando a ficha de registro, o instrutivo de preenchimento da ficha e o dicionário de dados podemos verificar que o estado de notificação é preenchido pelo sistema e o estado de residência é um preenchimento manual obrigatório. Como conclusão é recomendável usar o campo estado de residência invés do campo de estado de notificação por ter dados mais limpos e que ajudariam ao análise. 
+
+## Poucos dados dos óbitos
+
+Listamos a evolução do caso que é a dimensão onde estão os óbito. Vemos que temos 53 183 óbitos que são os dados mostrados na visualização. Também vemos que temos 18,6 milhões de NA's que é justificado porque o campo não é obrigatório segundo o dicionário de dados e o instrutivo de preenchimento da ficha. Então, em conclusão temos poucos óbitos porque não são preenchidos obrigatóriamente na ficha.
+
+```{r}
+summary(dados$evolucaoCaso)
+```
+
+```{r}
+counts = table(dados$evolucaoCaso)
+barplot(counts, main = "Evolução do casoe", xlab = "Evolução do caso")
+```
+
+Adicionando ao análise, os estados de Sergipe, Paraná e Mato Grosso do Sul tem menos de 200 óbitos registrados.
+
+```{r}
+counts = table(dados[dados$evolucaoCaso == 'Óbito',]$estadoIBGE)
+barplot(counts[counts < 1000], main = "Estado de residência dos óbitos", xlab = "Estado de residência dos óbitos")
+```
+
+
+
+
+
+
+
+
+
+
