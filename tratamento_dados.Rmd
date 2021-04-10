@@ -21,7 +21,7 @@ library(stringr)
 ## Download dos dados
 
 ```{r}
-list_dados = c("ac", "al", "ap", "am", "ba-1", "ba-2", "ce", "df", "es", "go-1", "go-2", "ma", "mt", "ms", "mg-1", "mg-2", "mg-3", "pa", "pb", "pr-1", "pr-2", "pe", "pi", "rj-1", "rj-2", "rn", "rs-1", "rs-2", "rs-3", "ro", "rr", "sc-1", "sc-2", "to", "se", "sp-1", "sp-2", "sp-3", "sp-4", "sp-5", "sp-6", "sp-7")
+list_dados = c("ac", "al", "ap", "am", "ba-1", "ba-2", "ba-3", "ce-1", "ce-2", "df", "es", "go-1", "go-2", "ma", "mt", "ms", "mg-1", "mg-2", "mg-3", "mg-4", "pa", "pb", "pr-1", "pr-2", "pe-1", "pe-2", "pi", "rj-1", "rj-2", "rj-3", "rn", "rs-1", "rs-2", "rs-3", "rs-4", "ro", "rr", "sc-1", "sc-2", "sc-3", "sc-4", "to", "se", "sp-1", "sp-2", "sp-3", "sp-4", "sp-5", "sp-6", "sp-7", "sp-8", "sp-9", "sp-10")
 
 for (state in list_dados) {
    filename = paste("dados-", state, ".csv", sep = "")
@@ -128,7 +128,7 @@ barplot(counts, main = "Resultado do teste", xlab = "Resultado do teste")
 ```{r}
 summary(dados$evolucaoCaso)
 counts = table(dados$evolucaoCaso)
-barplot(counts, main = "Evolução do casoe", xlab = "Evolução do caso")
+barplot(counts, main = "Evolução do caso", xlab = "Evolução do caso")
 ```
 
 ### Classificação final
@@ -423,6 +423,7 @@ dados[dados$classificacaoFinal == "Confirmado Clinico-Epidemiologico",]$classifi
 dados[dados$classificacaoFinal == "Confirmação Clínico Epidemiológico",]$classificacaoFinal = "Confirmado Clínico-Epidemiológico"
 dados[dados$classificacaoFinal == "Confirmação Laboratorial",]$classificacaoFinal = "Confirmado Laboratorial"
 dados[dados$classificacaoFinal == "Sindrome Gripal Nao Especificada",]$classificacaoFinal = "Síndrome Gripal Não Especificada"
+dados[dados$classificacaoFinal == "Confirmado Clinico-Imagem",]$classificacaoFinal = "Confirmado Clínico-Imagem"
 
 summary(dados$classificacaoFinal)
 dados$classificacaoFinal = factor(dados$classificacaoFinal)
@@ -435,9 +436,11 @@ summary(dados$classificacaoFinal)
 Campo obrigatório. A dimensão tem problemas de nulos.
 
 ```{r}
-levels(dados$estadoIBGE)
+detect = str_detect(levels(dados$estadoIBGE), regex("[0-9][0-9]"))
+indi = which(!detect)
+levels(dados$estadoIBGE)[indi]
 
-levels(dados$estadoIBGE)[2] = "Indefinido"
+levels(dados$estadoIBGE)[indi] = "Indefinido"
 
 summary(dados$estadoIBGE)
 ```
@@ -461,9 +464,11 @@ summary(dados$municipioIBGE)
 Campo gerado pelo sistema. A dimensão tem problemas de nulos.
 
 ```{r}
-levels(dados$estadoNotificacaoIBGE)
+detect = str_detect(levels(dados$estadoNotificacaoIBGE), regex("[0-9][0-9]"))
+indi = which(!detect)
+levels(dados$estadoNotificacaoIBGE)[indi]
 
-levels(dados$estadoNotificacaoIBGE)[28] = "Indefinido"
+levels(dados$estadoNotificacaoIBGE)[indi] = "Indefinido"
 
 dados[is.na(dados$estadoNotificacaoIBGE),]$estadoNotificacaoIBGE = "Indefinido"
 
@@ -499,7 +504,7 @@ dados[duplicated(dados$Id),]
 Data quando os dados foram pegos.
 
 ```{r}
-dateDownload = "2021-02-26"
+dateDownload = "2021-04-01"
 ```
 
 Campo obrigatório. A dimensão está fora do domínio. O paciente zero viajou para a Itália entre o 9 e 21 de fevereiro do 2020. Então a data do início dos síntomas mínima possível seria o 9 de fevereiro ([Primeiro caso confirmado de Covid-19 no Brasil ocorreu em SP e completa seis meses nesta quarta](https://g1.globo.com/sp/sao-paulo/noticia/2020/08/26/primeiro-caso-confirmado-de-covid-19-no-brasil-ocorreu-em-sp-e-completa-seis-meses-nesta-quarta.ghtml)). E a máxima data seria a data atual.
@@ -564,25 +569,10 @@ Mostrando os dados já tratados, menos síntomas nem condições
 
 ```{r}
 head(dados)
-summary(dados)
 ```
 
-## Salvando dados de registros num csv
-
-São salvos os registros de 1 milhão em 1 milhão 
-
 ```{r}
-dir.create("./output/qdscovid_registers/", showWarnings = FALSE, recursive = TRUE)
-number_files = as.integer(dim(dados)[1] / 1000000)
-for (num_file in 1:number_files) {
-   ini = 1 + (num_file - 1) * 1000000
-   fim = num_file * 1000000
-   write.table(dados[ini:fim,], file = paste("output/qdscovid_registers/qdscovid_registers_", num_file, ".csv", sep = ""), quote = FALSE, row.names = FALSE, sep = ";", eol = "\n")
-}
-num_file = num_file + 1
-ini = fim + 1
-fim = dim(dados)[1]
-write.table(dados[ini:fim,], file = paste("output/qdscovid_registers/qdscovid_registers_", num_file, ".csv", sep = ""), quote = FALSE, row.names = FALSE, sep = ";", eol = "\n")
+summary(dados)
 ```
 
 ## Salvando objeto dos dados

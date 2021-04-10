@@ -19,8 +19,10 @@ Carregando desde o RData que foi salvo. Também pode ser carregado desde qualque
 
 ```{r}
 load("output/qdscovid_registers.Rda")
-dados$condicoes = NULL
 head(dados)
+```
+
+```{r}
 summary(dados)
 ```
 
@@ -32,6 +34,18 @@ head(dados$sintomas)
 ```
 
 ### Tratamento e limpeza dos dados
+
+Convertendo os nulos a vazios.
+
+```{r}
+unique(dados[grepl("null", dados$sintomas, fixed = TRUE),]$sintomas)
+dados[which(dados$sintomas == "null"),]$sintomas = ""
+
+unique(dados[grepl("undefined", dados$sintomas, fixed = TRUE),]$sintomas)
+dados[which(dados$sintomas == "undefined"),]$sintomas = ""
+
+dados[is.na(dados$sintomas),]$sintomas = ""
+```
 
 Adicionando vírgulas ás palavras que deveriam ter vírgulas.
 
@@ -63,7 +77,6 @@ unique(dados[grepl("Gargantafebre", dados$sintomas, fixed = TRUE),]$sintomas)
 dados[which(dados$sintomas == "Dor De Gargantafebre,Tosse"),]$sintomas = "Dor De Garganta,Febre,Tosse"
 dados[which(dados$sintomas == "Dor De Gargantafebre,"),]$sintomas = "Dor De Garganta,Febre"   
 
-
 unique(dados[grepl("Dispneiatosse", dados$sintomas, fixed = TRUE),]$sintomas)
 dados[which(dados$sintomas == "Dispneiatosse"),]$sintomas = "Dispneia,Tosse"
 dados[which(dados$sintomas == "Dor De Garganta,Dispneiatosse"),]$sintomas = "Dor De Garganta,Dispneia,Tosse"
@@ -71,22 +84,43 @@ dados[which(dados$sintomas == "Dor De Garganta,Dispneiatosse"),]$sintomas = "Dor
 unique(dados[grepl("Febredispneia", dados$sintomas, fixed = TRUE),]$sintomas)
 dados[which(dados$sintomas == "Febredispneia"),]$sintomas = "Febre,Dispneia"
 
-save(dados, file = "output/qdscovid_symptoms.Rda")
+save(dados, file = "output/qdscovid_registers.Rda")
 rm(dados)
+invisible(gc())
 ```
 
 São extraidos os síntomas num dataframe e é criada uma coluna de contagem de síntomas por registro.
 
 ```{r}
-load("output/qdscovid_symptoms.Rda")
+load("output/qdscovid_registers.Rda")
 sintomas = as.data.frame(str_split(dados$sintomas, ",", simplify = TRUE), stringsAsFactors = TRUE)
 sintomas$count = apply(sintomas, 1, function(x) length(which(x != "")))
 head(sintomas)
 ```
 
+Salvando a quantidade de síntomas nos dados de registros.
+
+```{r}
+dados$sintomas_count = sintomas$count
+summary(dados$sintomas_count)
+
+save(dados, file = "output/qdscovid_registers.Rda")
+rm(dados)
+rm(sintomas)
+invisible(gc())
+```
+
 É criado um novo dataframe de síntomas duplicando as filas de acordo à fila **count** dos síntomas.
 
 ```{r}
+load("output/qdscovid_registers.Rda")
+
+dados = dados[dados$sintomas != "",]
+dados = dados[!is.na(dados$sintomas),]
+
+sintomas = as.data.frame(str_split(dados$sintomas, ",", simplify = TRUE), stringsAsFactors = TRUE)
+sintomas$count = apply(sintomas, 1, function(x) length(which(x != "")))
+
 dados = as.data.frame(lapply(dados, rep, sintomas$count))
 head(dados)
 ```
@@ -94,20 +128,25 @@ head(dados)
 São salvos o novo dataframe e os síntomas.
 
 ```{r}
+dados$sintomas_count = NULL
+dados$condicoes = NULL
+
 save(dados, file = "output/qdscovid_symptoms.Rda")
-rm(dados)
 save(sintomas, file = "output/sintomas.Rda")
+rm(dados)
 rm(sintomas)
+invisible(gc())
 ```
 
 O dataframe dos síntomas é simplificado a uma lista de síntomas.
 
 ```{r}
 load("output/sintomas.Rda")
-sintomas_list = apply(sintomas, 1, function(x) x[seq_len(x[11])])
+sintomas_list = apply(sintomas, 1, function(x) x[seq_len(x[dim(sintomas)[2]])])
 rm(sintomas)
 save(sintomas_list, file = "output/sintomas_list.Rda")
 rm(sintomas_list)
+invisible(gc())
 ```
 
 Nos novos dados de síntomas são estabelecidos os síntomas corretos na dimensão dos síntomas.
@@ -122,6 +161,8 @@ head(sintomas_list)
 load("output/qdscovid_symptoms.Rda")
 dados$sintomas = sintomas_list
 rm(sintomas_list)
+invisible(gc())
+
 dados = transform(dados, sintomas = as.factor(sintomas))
 head(dados)
 ```
@@ -131,6 +172,7 @@ Os dados dos síntomas são salvos na memória e são deletados os outros dados 
 ```{r}
 save(dados, file = "output/qdscovid_symptoms.Rda")
 rm(dados)
+invisible(gc())
 
 if (file.exists("output/sintomas.Rda")) {
   file.remove("output/sintomas.Rda")
@@ -146,20 +188,19 @@ load("output/qdscovid_symptoms.Rda")
 
 counts = table(dados$sintomas)
 sort(counts, decreasing = TRUE)
+```
 
+```{r}
 colb = brewer.pal(12, "Set3")
 barplot(sort(counts, decreasing = TRUE)[1:12], horiz = TRUE, las = 1, col = colb, cex.names = 0.7, cex.axis = 0.7)
 
 rm(counts, colb)
+invisible(gc())
 ```
 
 São tratados os dados por falta de padronização e também os nulos.
 
 ```{r}
-levels(dados$sintomas) = c(levels(dados$sintomas), "Indefinido")
-
-dados[dados$sintomas == "null",]$sintomas = "Indefinido"
-dados[dados$sintomas == "undefined",]$sintomas = "Indefinido"
 dados[dados$sintomas == "calafrios",]$sintomas = "calafrio"
 dados[dados$sintomas == "coriza",]$sintomas = "Coriza"
 dados[dados$sintomas == "diarréia",]$sintomas = "diarreia"
@@ -172,23 +213,21 @@ dados[dados$sintomas == "Outros: Paciente assintomático" | dados$sintomas == "P
 
 dados$sintomas = factor(dados$sintomas)
 
-save(dados, file = "output/qdscovid_symptoms.Rda")
-
 counts = table(dados$sintomas)
 sort(counts, decreasing = TRUE)
+```
 
+```{r}
 colb = brewer.pal(12, "Set3")
 barplot(sort(counts, decreasing = TRUE)[1:12], horiz = TRUE, las = 1, col = colb, cex.names = 0.7, cex.axis = 0.7)
 
 rm(counts, colb)
-rm(dados)
+invisible(gc())
 ```
 
 Deletando os valores nulos e só ficando com síntomas que tem mais de 2000 dados. Os que têm menos são passados para a dimensão **Outros**.
 
 ```{r}
-load("output/qdscovid_symptoms.Rda")
-
 dados = dados[dados$sintomas != "",]
 
 counts = table(dados$sintomas)
@@ -197,38 +236,22 @@ dados[!(dados$sintomas %in% names(counts[counts >= 2000])),]$sintomas = "Outros"
 
 dados$sintomas = factor(dados$sintomas)
 
-levels(dados$sintomas) = c("Assint.", "Coriza", "Dif. de resp.", "Dispneia", "Dist. Gusta.", "Dist. Olfa.", "Dor de cab.", "Dor de Garg.", "Febre", "Outros", "Tosse", "Indefinido")
+levels(dados$sintomas)
+levels(dados$sintomas) = c("Assint.", "Coriza", "Dif. de resp.", "Dispneia", "Dist. Gusta.", "Dist. Olfa.", "Dor de cab.", "Dor de Garg.", "Febre", "Outros", "Tosse")
 
 save(dados, file = "output/qdscovid_symptoms.Rda")
 
 counts = table(dados$sintomas)
 
 sort(counts, decreasing = TRUE)
+```
 
+```{r}
 colb = brewer.pal(12, "Set3")
 barplot(sort(counts, decreasing = TRUE), horiz = TRUE, las = 1, col = colb, cex.names = 0.5, cex.axis = 0.5) 
 rm(counts, colb)
 rm(dados)
-```
-
-### Salvando dados de síntomas num csv
-
-São salvos os registros de 1 milhão em 1 milhão 
-
-```{r}
-load("output/qdscovid_symptoms.Rda")
-
-dir.create("./output/qdscovid_symptoms/", showWarnings = FALSE, recursive = TRUE)
-number_files = as.integer(dim(dados)[1] / 1000000)
-for (num_file in 1:number_files) {
-   ini = 1 + (num_file - 1) * 1000000
-   fim = num_file * 1000000
-   write.table(dados[ini:fim,], file = paste("output/qdscovid_symptoms/qdscovid_symptoms_", num_file, ".csv", sep = ""), quote = FALSE, row.names = FALSE, sep = ";", eol = "\n")
-}
-num_file = num_file + 1
-ini = fim + 1
-fim = dim(dados)[1]
-write.table(dados[ini:fim,], file = paste("output/qdscovid_symptoms/qdscovid_symptoms_", num_file, ".csv", sep = ""), quote = FALSE, row.names = FALSE, sep = ";", eol = "\n")
+invisible(gc())
 ```
 
 ## Condições
@@ -239,24 +262,31 @@ Carregando desde o RData que foi salvo. Também pode ser carregado desde qualque
 
 ```{r}
 load("output/qdscovid_registers.Rda")
-dados$sintomas = NULL
 head(dados)
+```
+
+```{r}
 summary(dados)
 ```
 
 ### Exploração dos dados
 
 ```{r}
+dados$sintomas = NULL
+
 summary(dados$condicoes)
 head(dados$condicoes)
 ```
 
 ### Tratamento e limpeza dos dados
 
-Deletando os valores nulos de condições.
+Deixando vazio alguns valores nulos de condições.
 
 ```{r}
-dados = dados[dados$condicoes != "null",]
+dados[is.na(dados$condicoes),]$condicoes = ""
+dados[dados$condicoes == "undefined",]$condicoes = ""
+dados[dados$condicoes == "null",]$condicoes = ""
+
 summary(dados$condicoes)
 head(dados$condicoes)
 ```
@@ -269,9 +299,26 @@ condicoes$count = apply(condicoes, 1, function(x) length(which(x != "")))
 head(condicoes)
 ```
 
+Salvando a quantidade de condições nos dados de registros.
+
+```{r}
+dados$condicoes_count = condicoes$count
+summary(dados$condicoes_count)
+
+save(dados, file = "output/qdscovid_registers.Rda")
+```
+
 É criado um novo dataframe de condições duplicando as filas de acordo à fila **count** das condições.
 
 ```{r}
+dados = dados[dados$condicoes != "",]
+dados = dados[!is.na(dados$condicoes),]
+
+condicoes = as.data.frame(str_split(dados$condicoes, ",", simplify = TRUE), stringsAsFactors = TRUE)
+condicoes$count = apply(condicoes, 1, function(x) length(which(x != "")))
+
+invisible(gc())
+
 dados = as.data.frame(lapply(dados, rep, condicoes$count))
 head(dados)
 ```
@@ -279,20 +326,24 @@ head(dados)
 São salvos o novo dataframe e os condições.
 
 ```{r}
+dados$condicoes_count = NULL
+
 save(dados, file = "output/qdscovid_conditions.Rda")
 rm(dados)
 save(condicoes, file = "output/condicoes.Rda")
 rm(condicoes)
+invisible(gc())
 ```
 
 O dataframe das condições é simplificada a uma lista de condições.
 
 ```{r}
 load("output/condicoes.Rda")
-condicoes_list = apply(condicoes, 1, function(x) x[seq_len(x[16])])
+condicoes_list = apply(condicoes, 1, function(x) x[seq_len(x[dim(condicoes)[2]])])
 rm(condicoes)
 save(condicoes_list, file = "output/condicoes_list.Rda")
 rm(condicoes_list)
+invisible(gc())
 ```
 
 Nos novos dados de condições são estabelecidas as condições corretas na dimensão das condições.
@@ -307,6 +358,7 @@ head(condicoes_list)
 load("output/qdscovid_conditions.Rda")
 dados$condicoes = condicoes_list
 rm(condicoes_list)
+invisible(gc())
 dados = transform(dados, condicoes = as.factor(condicoes))
 head(dados)
 ```
@@ -314,8 +366,11 @@ head(dados)
 Os dados das condiões são salvos na memória e são deletados os outros dados usados para fazer o tratamento.
 
 ```{r}
+dados$sintomas_count = NULL
+
 save(dados, file = "output/qdscovid_conditions.Rda")
 rm(dados)
+invisible(gc())
 
 if (file.exists("output/condicoes.Rda")) {
   file.remove("output/condicoes.Rda")
@@ -330,12 +385,15 @@ if (file.exists("output/condicoes_list.Rda")) {
 load("output/qdscovid_conditions.Rda")
 
 counts = table(dados$condicoes)
-sort(counts, decreasing = TRUE)
+head(sort(counts, decreasing = TRUE), n = 40L)
+```
 
+```{r}
 colb = brewer.pal(12, "Set3")
 barplot(sort(counts, decreasing = TRUE)[1:12], horiz = TRUE, las = 1, col = colb, cex.names = 0.7, cex.axis = 0.7)
 
 rm(counts, colb)
+invisible(gc())
 ```
 
 São tratados os dados por falta de padronização e também os nulos. Deletando os valores nulos e só ficando com condições que tem mais de 2000 dados. Os que têm menos são passados para a dimensão **Outros**.
@@ -344,21 +402,26 @@ São tratados os dados por falta de padronização e também os nulos. Deletando
 levels(dados$condicoes) = c(levels(dados$condicoes), "Outros")
 
 dados = dados[dados$condicoes != "",]
-dados = dados[dados$condicoes != "undefined",]
 
 dados[dados$condicoes == "4 ou 5)",]$condicoes = "Doenças renais crônicas em estágio avançado (graus 3"
 dados[dados$condicoes == "Gestante de alto risco",]$condicoes = "Gestante"
 dados[dados$condicoes == "Gestante De Alto Risco",]$condicoes = "Gestante"
 dados[dados$condicoes == "Doenças Cardíacas Crônicas",]$condicoes = "Doenças cardíacas crônicas"
 dados[dados$condicoes == "Doenças Cardoacas Crônicas",]$condicoes = "Doenças cardíacas crônicas"
-dados[dados$condicoes == "Doenças Cardoacas Crônicas",]$condicoes = "Doenças cardíacas crônicas"
 dados[dados$condicoes == "Doencas Cardiacas Cronicas",]$condicoes = "Doenças cardíacas crônicas"
 dados[dados$condicoes == "Doenças Cardoacas Crônicasdoenças Respiratórias Crônicas Descompensadas",]$condicoes = "Doenças cardíacas crônicas"
+dados[dados$condicoes == "Doenças cardíacas crônicas descompensadas",]$condicoes = "Doenças cardíacas crônicas"
 dados[dados$condicoes == "Doenças renais crônicas",]$condicoes = "Doenças renais crônicas em estágio avançado (graus 3"
 dados[dados$condicoes == "Doenças Renais Crônicas Em Estágio Avançado",]$condicoes = "Doenças renais crônicas em estágio avançado (graus 3"
 dados[dados$condicoes == "Doenças Renais Crônicas",]$condicoes = "Doenças renais crônicas em estágio avançado (graus 3"
+dados[dados$condicoes == "Graus 3",]$condicoes = "Doenças renais crônicas em estágio avançado (graus 3" 
+dados[dados$condicoes == "4 E 5",]$condicoes = "Doenças renais crônicas em estágio avançado (graus 3" 
+dados[dados$condicoes == "4 Ou 5",]$condicoes = "Doenças renais crônicas em estágio avançado (graus 3" 
+dados[dados$condicoes == "Doenças renais crônicas ou em estágio avançado (graus 3",]$condicoes = "Doenças renais crônicas em estágio avançado (graus 3" 
 dados[dados$condicoes == "Doenças Respiratórias Crônicas Descompensadas",]$condicoes = "Doenças respiratórias crônicas descompensadas"
 dados[dados$condicoes == "Imunosupressão",]$condicoes = "Imunossupressão"
+dados[dados$condicoes == "Portador de doenças cromossômicas ou estado de fragilidade",]$condicoes = "Portador de doenças cromossômicas ou estado de fragilidade imunológica"
+dados[dados$condicoes == "Puérpera (até 45 dias de parto)",]$condicoes = "Puérpera (até 45 dias do parto)"
 
 counts = table(dados$condicoes)
 
@@ -370,12 +433,15 @@ save(dados, file = "output/qdscovid_conditions.Rda")
 
 counts = table(dados$condicoes)
 sort(counts, decreasing = TRUE)
+```
 
+```{r}
 colb = brewer.pal(12, "Set3")
 barplot(sort(counts, decreasing = TRUE)[1:12], horiz = TRUE, las = 1, col = colb, cex.names = 0.7, cex.axis = 0.7)
 
 rm(counts, colb)
 rm(dados)
+invisible(gc())
 ```
 
 Mudando os labels das categorías.
@@ -383,6 +449,7 @@ Mudando os labels das categorías.
 ```{r}
 load("output/qdscovid_conditions.Rda")
 
+levels(dados$condicoes)
 levels(dados$condicoes) = c("Diabetes", "Doe. card.", "Doe. renais", "Doe. resp.", "Gestante", "Imuno.", "Obesidade", "Doe. cromo.", "Puerpera", "Outros")
 
 save(dados, file = "output/qdscovid_conditions.Rda")
@@ -390,36 +457,24 @@ save(dados, file = "output/qdscovid_conditions.Rda")
 counts = table(dados$condicoes)
 
 sort(counts, decreasing = TRUE)
+```
 
+```{r}
 colb = brewer.pal(12, "Set3")
 barplot(sort(counts, decreasing = TRUE), horiz = TRUE, las = 1, col = colb, cex.names = 0.5, cex.axis = 0.5) 
 rm(counts, colb)
 rm(dados)
+invisible(gc())
 ```
 
-### Salvando dados de condições num csv
-
-São salvos os registros de 1 milhão em 1 milhão 
+Limpando dados dos registros das condições.
 
 ```{r}
-load("output/qdscovid_conditions.Rda")
+load("output/qdscovid_registers.Rda")
+head(dados)
 
-dir.create("./output/qdscovid_conditions/", showWarnings = FALSE, recursive = TRUE)
-number_files = as.integer(dim(dados)[1] / 1000000)
-for (num_file in 1:number_files) {
-   ini = 1 + (num_file - 1) * 1000000
-   fim = num_file * 1000000
-   write.table(dados[ini:fim,], file = paste("output/qdscovid_conditions/qdscovid_conditions_", num_file, ".csv", sep = ""), quote = FALSE, row.names = FALSE, sep = ";", eol = "\n")
-}
-num_file = num_file + 1
-ini = fim + 1
-fim = dim(dados)[1]
-write.table(dados[ini:fim,], file = paste("output/qdscovid_conditions/qdscovid_conditions_", num_file, ".csv", sep = ""), quote = FALSE, row.names = FALSE, sep = ";", eol = "\n")
+dados$condicoes = NULL
+save(dados, file = "output/qdscovid_registers.Rda")
+rm(dados)
+invisible(gc())
 ```
-
-
-
-
-
-
-
