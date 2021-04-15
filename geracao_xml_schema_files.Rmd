@@ -24,7 +24,7 @@ load("output/qdscovid_registers.Rda")
 dir.create("./output/qdscovid_registers/", showWarnings = FALSE, recursive = TRUE)
 
 for (estado in levels(dados$estadoIBGE)) {
-   write.table(dados[dados$estadoIBGE == estado,], file = paste("output/qdscovid_registers/qdscovid_registers_", estado, ".csv", sep = ""), quote = FALSE, row.names = FALSE, sep = ";", eol = "\r")
+   write.table(dados[dados$estadoIBGE == estado,], file = paste("output/qdscovid_registers/qdscovid_registers_", estado, ".csv", sep = ""), quote = FALSE, row.names = FALSE, sep = ";", eol = "\n")
 }
 
 rm(dados)
@@ -39,7 +39,7 @@ load("output/qdscovid_symptoms.Rda")
 dir.create("./output/qdscovid_symptoms/", showWarnings = FALSE, recursive = TRUE)
 
 for (estado in levels(dados$estadoIBGE)) {
-   write.table(dados[dados$estadoIBGE == estado,], file = paste("output/qdscovid_symptoms/qdscovid_symptoms_", estado, ".csv", sep = ""), quote = FALSE, row.names = FALSE, sep = ";", eol = "\r")
+   write.table(dados[dados$estadoIBGE == estado,], file = paste("output/qdscovid_symptoms/qdscovid_symptoms_", estado, ".csv", sep = ""), quote = FALSE, row.names = FALSE, sep = ";", eol = "\n")
 }
 
 rm(dados)
@@ -54,7 +54,7 @@ load("output/qdscovid_conditions.Rda")
 dir.create("./output/qdscovid_conditions/", showWarnings = FALSE, recursive = TRUE)
 
 for (estado in levels(dados$estadoIBGE)) {
-   write.table(dados[dados$estadoIBGE == estado,], file = paste("output/qdscovid_conditions/qdscovid_conditions_", estado, ".csv", sep = ""), quote = FALSE, row.names = FALSE, sep = ";", eol = "\r")
+   write.table(dados[dados$estadoIBGE == estado,], file = paste("output/qdscovid_conditions/qdscovid_conditions_", estado, ".csv", sep = ""), quote = FALSE, row.names = FALSE, sep = ";", eol = "\n")
 }
 
 rm(dados)
