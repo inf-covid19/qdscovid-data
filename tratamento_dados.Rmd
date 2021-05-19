@@ -1,8 +1,34 @@
 ---
 title: "Tratamendo de dados do dataset e-SUS Notifica"
-author: Juan Carlos Carbajal Ipenza
-output: html_notebook
+author: "Juan Carlos Carbajal Ipenza"
+output:
+  html_notebook:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    fig_caption: true
+    theme: darkly
+    highlight: breezedark
+    df_print: paged
+  pdf_document: 
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    fig_caption: true
+    df_print: default
+    highlight: tango
+    keep_tex: true
+    fig_width: 5
+    fig_height: 3.5
 ---
+
+```{r set-options, echo=FALSE, cache=FALSE}
+if (knitr::is_latex_output()) {
+  options(width = 70)
+}
+```
+
+# Introdução
 
 Documento feito para tratar os dados do dataset e-SUS Notifica. As fontes principais para ter conhecimento dos dados são:
 
@@ -10,7 +36,7 @@ Documento feito para tratar os dados do dataset e-SUS Notifica. As fontes princi
 - [Instrutivo de preenchimento da ficha de notificação de caso de Síndrome Gripal suspeito de doença pelo Coronavírus 2019 – COVID-19 (B34.2)](https://opendatasus.saude.gov.br/dataset/140cf8b0-cade-43d8-b358-30d472c50fad/resource/b10b9483-6eda-4c99-b5bd-6a6d7b8bb34c/download/instrutivo-e-sus-notifica-29-09-2020_revisado.pdf)
 - [Dicionário de dados – e-SUS Notifica (via OpenDatasus)](https://opendatasus.saude.gov.br/dataset/140cf8b0-cade-43d8-b358-30d472c50fad/resource/0c0d4c0b-4000-4bc8-86f3-5ff286b468a2/download/dicionario-de-dados_e-sus-notifica-opendatasus-1.pdf)
 
-### Livrarias
+## Livrarias
 
 ```{r}
 library(plyr)
@@ -18,23 +44,32 @@ library(readr)
 library(stringr)
 ```
 
-## Download dos dados
+# Download dos dados
 
-```{r}
-list_dados = c("ac", "al", "ap", "am", "ba-1", "ba-2", "ba-3", "ce-1", "ce-2", "df", "es", "go-1", "go-2", "ma", "mt", "ms", "mg-1", "mg-2", "mg-3", "mg-4", "pa", "pb", "pr-1", "pr-2", "pe-1", "pe-2", "pi", "rj-1", "rj-2", "rj-3", "rn", "rs-1", "rs-2", "rs-3", "rs-4", "ro", "rr", "sc-1", "sc-2", "sc-3", "sc-4", "to", "se", "sp-1", "sp-2", "sp-3", "sp-4", "sp-5", "sp-6", "sp-7", "sp-8", "sp-9", "sp-10")
+```{r, results='hide'}
+list_dados = c("ac", "al", "ap", "am", "ba-1", "ba-2", "ba-3", "ce-1", "ce-2",
+               "df", "es", "go-1", "go-2", "ma", "mt", "ms", "mg-1", "mg-2",
+               "mg-3", "mg-4", "pa", "pb", "pr-1", "pr-2", "pe-1", "pe-2",
+               "pi", "rj-1", "rj-2", "rj-3", "rn", "rs-1", "rs-2", "rs-3",
+               "rs-4", "ro", "rr", "sc-1", "sc-2", "sc-3", "sc-4", "to",
+               "se", "sp-1", "sp-2", "sp-3", "sp-4", "sp-5", "sp-6", "sp-7",
+               "sp-8", "sp-9", "sp-10")
 
 for (state in list_dados) {
    filename = paste("dados-", state, ".csv", sep = "")
    fullFilename = paste("dados/", filename, sep = "")
    if (!file.exists(fullFilename)) {
-      download.file(paste("https://s3-sa-east-1.amazonaws.com/ckan.saude.gov.br/", filename, sep = ""), destfile = fullFilename)
+      download.file(
+         paste("https://s3-sa-east-1.amazonaws.com/ckan.saude.gov.br/",
+               filename, sep = ""),
+         destfile = fullFilename)
    }
 }
 ```
 
-## Importar dados, strings vazios como NA, strings como fatores
+# Importar dados, strings vazios como NA, strings como fatores
 
-### Importando dados
+## Importando dados
 
 **Atenção:** Antes de importar os dados abrir os arquivos do estado de RJ e procurar pela palavra **diabettes** daí substituir a coluna de síntomas que tem dados com ponto vírgula pela vírgula. Tem que ficar assim: *"Doenças respiratórias crônicas descompensadas,rinite alergica, pré diabettes, obsidade"*
 
@@ -43,15 +78,24 @@ Para importar um csv
 ```{r}
 importCSV <- function(file) {
    print(paste("Importing ", file, " ...", sep = ""))
-   csv = read.csv(file, sep = ";", na.strings = "", stringsAsFactors = T,colClasses = c(
-      "character", "character", "character", "NULL", # id, dataNotificacao, dataInicioSintomas, dataNascimento
-      "character", "factor", "NULL", "character", # sintomas, profissionalSaude, cbo, condicoes
-      "factor", "character", "factor", "factor", # estadoTeste, dataTeste, tipoTeste, resultadoTeste
-      "NULL", "factor", "NULL", "factor", # paisOrigem, sexo, estado, estadoIBGE
-      "NULL", "factor", "NULL", "NULL", # municipio, municipioIBGE, origem, estadoNotificacao
-      "factor", "NULL", "factor", "NULL", # estadoNotificacaoIBGE, municipioNotificacao, municipioNotificacaoIBGE, excluido
-      "NULL", "character", "character", "factor", # validado, idade, dataEncerramento, evolucaoCaso
-      "factor")) # classificacaoFinal
+   csv = read.csv(file, sep = ";", na.strings = "", stringsAsFactors = T, 
+                  colClasses = c(
+                     "character", "character", "character", "NULL",
+                     # id, dataNotificacao, dataInicioSintomas, dataNascimento
+                     "character", "factor", "NULL", "character",
+                     # sintomas, profissionalSaude, cbo, condicoes
+                     "factor", "character", "factor", "factor",
+                     # estadoTeste, dataTeste, tipoTeste, resultadoTeste
+                     "NULL", "factor", "NULL", "factor",
+                     # paisOrigem, sexo, estado, estadoIBGE
+                     "NULL", "factor", "NULL", "NULL",
+                     # municipio, municipioIBGE, origem, estadoNotificacao
+                     "factor", "NULL", "factor", "NULL",
+                     # estadoNotificacaoIBGE, municipioNotificacao,
+                     # municipioNotificacaoIBGE, excluido
+                     "NULL", "character", "character", "factor",
+                     # validado, idade, dataEncerramento, evolucaoCaso
+                     "factor")) # classificacaoFinal
    return(csv)
 }
 ```
@@ -61,15 +105,22 @@ Processando todos os cSV's
 ```{r}
 myfiles = list.files(path="dados", pattern="*.csv", full.names=TRUE)
 myfiles
+```
 
+
+```{r, results='hide'}
 dados = ldply(myfiles, importCSV)
+```
 
+
+```{r}
 colnames(dados)
 dim(dados)
+
 head(dados)
 ```
 
-### Corrigindo colunas
+## Corrigindo colunas
 
 ```{r}
 colnames(dados)[1] = "id"
@@ -80,9 +131,9 @@ dados$validado = NULL
 colnames(dados)
 ```
 
-## Explorando dados categóricos
+# Explorando dados categóricos
 
-### Profissional de saúde 
+## Profissional de saúde 
 
 ```{r}
 summary(dados$profissionalSaude)
@@ -90,7 +141,7 @@ counts = table(dados$profissionalSaude)
 barplot(counts, main = "Profissional de saúde", xlab = "Profissional de saúde")
 ```
 
-### Sexo 
+## Sexo 
 
 ```{r}
 summary(dados$sexo)
@@ -98,7 +149,7 @@ counts = table(dados$sexo)
 barplot(counts, main = "Sexo", xlab = "Sexo")
 ```
 
-### Estado do teste
+## Estado do teste
 
 ```{r}
 summary(dados$estadoTeste)
@@ -107,7 +158,7 @@ barplot(counts, main = "Estado do teste", xlab = "Estado do teste")
 ```
 
 
-### Tipo de teste
+## Tipo de teste
 
 ```{r}
 summary(dados$tipoTeste)
@@ -115,7 +166,7 @@ counts = table(dados$tipoTeste)
 barplot(counts, main = "Tipo de teste", xlab = "Tipo de teste")
 ```
 
-### Resultado do teste
+## Resultado do teste
 
 ```{r}
 summary(dados$resultadoTeste)
@@ -123,7 +174,7 @@ counts = table(dados$resultadoTeste)
 barplot(counts, main = "Resultado do teste", xlab = "Resultado do teste")
 ```
 
-### Evolução do caso
+## Evolução do caso
 
 ```{r}
 summary(dados$evolucaoCaso)
@@ -131,7 +182,7 @@ counts = table(dados$evolucaoCaso)
 barplot(counts, main = "Evolução do caso", xlab = "Evolução do caso")
 ```
 
-### Classificação final
+## Classificação final
 
 ```{r}
 summary(dados$classificacaoFinal)
@@ -139,7 +190,7 @@ counts = table(dados$classificacaoFinal)
 barplot(counts, main = "Classificação final", xlab = "Classificação final")
 ```
 
-### Estado de residência
+## Estado de residência
 
 ```{r}
 summary(dados$estadoIBGE)
@@ -147,15 +198,16 @@ counts = table(dados$estadoIBGE)
 barplot(counts, main = "Estado de residência", xlab = "Estado de residência")
 ```
 
-### Municipio de residência
+## Municipio de residência
 
 ```{r}
 summary(dados$municipioIBGE)
 counts = table(dados$municipioIBGE)
-barplot(counts, main = "Municipio de residência", xlab = "Municipio de residência")
+barplot(counts, main = "Municipio de residência",
+        xlab = "Municipio de residência")
 ```
 
-### Estado da notificação
+## Estado da notificação
 
 ```{r}
 summary(dados$estadoNotificacaoIBGE)
@@ -163,53 +215,58 @@ counts = table(dados$estadoNotificacaoIBGE)
 barplot(counts, main = "Estado da notificação", xlab = "Estado da notificação")
 ```
 
-### Municipio da notificação
+## Municipio da notificação
 
 ```{r}
 summary(dados$municipioNotificacaoIBGE)
 counts = table(dados$municipioNotificacaoIBGE)
-barplot(counts, main = "Municipio da notificação", xlab = "Municipio da notificação")
+barplot(counts, main = "Municipio da notificação",
+        xlab = "Municipio da notificação")
 ```
 
-## Explorando dados temporais
+# Explorando dados temporais
 
 Antes de explorar os dados temporais. Os dados são convertidos para Date:
 
 ```{r}
-dados = transform(dados, dataInicioSintomas = as.Date(dataInicioSintomas, "%Y-%m-%d"), dataNotificacao = as.Date(dataNotificacao, "%Y-%m-%d"), dataTeste = as.Date(dataTeste, "%Y-%m-%d"), dataEncerramento = as.Date(dataEncerramento, "%Y-%m-%d"))
+dados = transform(dados,
+                  dataInicioSintomas = as.Date(dataInicioSintomas, "%Y-%m-%d"),
+                  dataNotificacao = as.Date(dataNotificacao, "%Y-%m-%d"),
+                  dataTeste = as.Date(dataTeste, "%Y-%m-%d"),
+                  dataEncerramento = as.Date(dataEncerramento, "%Y-%m-%d"))
 ```
 
-### Data do início dos síntomas
+## Data do início dos síntomas
 
 ```{r}
 summary(dados$dataInicioSintomas)
 ```
 
-### Data da notificação
+## Data da notificação
 
 ```{r}
 summary(dados$dataNotificacao)
 ```
 
-### Data do teste
+## Data do teste
 
 ```{r}
 summary(dados$dataTeste)
 ```
 
-### Data de encerramento
+## Data de encerramento
 
 ```{r}
 summary(dados$dataEncerramento)
 ```
 
-## Valores faltantes - NAs
+# Valores faltantes - NAs
 
 ```{r}
 dim(dados[!complete.cases(dados),])[1]
 ```
 
-## Tratamento e limpeza dos dados
+# Tratamento e limpeza dos dados
 
 A moda
 
@@ -220,7 +277,7 @@ getMode <- function(v) {
 }
 ```
 
-### Profissional de saúde
+## Profissional de saúde
 
 Campo obrigatório. A dimensão tem o problema de ter dados fora de domínio, falta de padronização e nulos. Pela documentação só são aceitos:
 
@@ -230,11 +287,16 @@ Campo obrigatório. A dimensão tem o problema de ter dados fora de domínio, fa
 ```{r}
 unique(dados$profissionalSaude)
 
-dados[grepl("Médico", dados$profissionalSaude, fixed = TRUE),]$profissionalSaude = "Sim"
-dados[grepl("Nao", dados$profissionalSaude, fixed = TRUE),]$profissionalSaude = "Não"
+dados[grepl("Médico", dados$profissionalSaude,
+            fixed = TRUE),]$profissionalSaude = "Sim"
+dados[grepl("Nao", dados$profissionalSaude,
+            fixed = TRUE),]$profissionalSaude = "Não"
 
 myMode = getMode(dados$profissionalSaude)
-dados[dados$profissionalSaude %in% c("undefined", "null"),]$profissionalSaude = myMode
+
+cond_x = dados$profissionalSaude %in% c("undefined", "null")
+dados[cond_x,]$profissionalSaude = myMode
+
 dados[is.na(dados$profissionalSaude),]$profissionalSaude = myMode
 
 summary(dados$profissionalSaude)
@@ -243,7 +305,7 @@ levels(dados$profissionalSaude) = c("Nao", "Sim")
 summary(dados$profissionalSaude)
 ```
 
-### Idade
+## Idade
 
 Campo obrigatório. A dimensão tem muitos dados fora do domínio e também tem nulos.
 
@@ -270,7 +332,7 @@ dados[is.na(dados$idade) | dados$idade < 0 | dados$idade > 116,]$idade = myMedia
 summary(dados$idade)
 ```
 
-### Sexo
+## Sexo
 
 Campo obrigatório. A dimensão tem o problema de ter dados fora de domínio e nulos. Pela documentação só são aceitos:
 
@@ -290,7 +352,7 @@ dados$sexo = factor(dados$sexo)
 summary(dados$sexo)
 ```
 
-### Estado do teste
+## Estado do teste
 
 A dimensão tem o problema de ter dados nulos. Pela documentação só são aceitos:
 
@@ -305,15 +367,18 @@ Foi adicionado o nivel **Indefinido** para os dados nulos.
 unique(dados$estadoTeste)
 
 levels(dados$estadoTeste) = c(levels(dados$estadoTeste), "Indefinido")
-dados[is.na(dados$estadoTeste) | dados$estadoTeste %in% c("null", "undefined"),]$estadoTeste = "Indefinido"
+
+cond_x = is.na(dados$estadoTeste) | dados$estadoTeste %in% c("null","undefined")
+dados[cond_x,]$estadoTeste = "Indefinido"
 
 summary(dados$estadoTeste)
 dados$estadoTeste = factor(dados$estadoTeste)
-levels(dados$estadoTeste) = c("Coletado", "Concluido", "Exame Nao Solicitado", "Solicitado", "Indefinido")
+levels(dados$estadoTeste) = c("Coletado", "Concluido","Exame Nao Solicitado",
+                              "Solicitado", "Indefinido")
 summary(dados$estadoTeste)
 ```
 
-### Tipo de teste
+## Tipo de teste
 
 A dimensão tem o problema de ter dados com falta de padronização e nulos. Pela documentação só são aceitos:
 
@@ -334,17 +399,23 @@ dados[is.na(dados$tipoTeste),]$tipoTeste = "Indefinido"
 dados[dados$tipoTeste == "null",]$tipoTeste = "Indefinido"
 dados[dados$tipoTeste == "undefined",]$tipoTeste = "Indefinido"
 
-dados[dados$tipoTeste == "Enzimaimunoensaio \023 ELISA",]$tipoTeste = "Enzimaimunoensaio - ELISA IgM"
-dados[dados$tipoTeste == "Imunoensaio por Eletroquimioluminescência \023 ECLIA",]$tipoTeste = "Imunoensaio por Eletroquimioluminescência - ECLIA IgG"
-dados[dados$tipoTeste == "Teste rápido",]$tipoTeste = "TESTE RÁPIDO - ANTICORPO"
+cond_x = dados$tipoTeste == "Enzimaimunoensaio \023 ELISA"
+dados[cond_x,]$tipoTeste = "Enzimaimunoensaio - ELISA IgM"
+
+cond_x = dados$tipoTeste == "Imunoensaio por Eletroquimioluminescência \023 ECLIA"
+dados[cond_x,]$tipoTeste = "Imunoensaio por Eletroquimioluminescência - ECLIA IgG"
+
+cond_x = dados$tipoTeste == "Teste rápido"
+dados[cond_x,]$tipoTeste = "TESTE RÁPIDO - ANTICORPO"
 
 summary(dados$tipoTeste)
 dados$tipoTeste = factor(dados$tipoTeste)
-levels(dados$tipoTeste) = c("ELISA IgM", "ECLIA IgG", "CLIA", "RT-PCR", "ANTICORPO", "ANTIGENO", "Indefinido")
+levels(dados$tipoTeste) = c("ELISA IgM", "ECLIA IgG", "CLIA", "RT-PCR",
+                            "ANTICORPO", "ANTIGENO", "Indefinido")
 summary(dados$tipoTeste)
 ```
 
-### Resultado do teste
+## Resultado do teste
 
 A dimensão tem o problema de ter dados nulos. Pela documentação só são aceitos:
 
@@ -367,7 +438,7 @@ dados$resultadoTeste = factor(dados$resultadoTeste)
 summary(dados$resultadoTeste)
 ```
 
-### Evolução do caso
+## Evolução do caso
 
 A dimensão tem o problema de ter NAs. Pela documentação só são aceitos:
 
@@ -393,7 +464,7 @@ levels(dados$evolucaoCaso)[7] = "Obito"
 summary(dados$evolucaoCaso)
 ```
 
-### Classificação final
+## Classificação final
 
 Transformando os dados a factores.
 
@@ -416,22 +487,33 @@ Foi adicionado o nivel **Indefinido** para os dados nulos.
 ```{r}
 unique(dados$classificacaoFinal)
 
-levels(dados$classificacaoFinal) = c(levels(dados$classificacaoFinal), "Indefinido")
+levels(dados$classificacaoFinal) = c(levels(dados$classificacaoFinal),
+                                     "Indefinido")
 dados[is.na(dados$classificacaoFinal),]$classificacaoFinal = "Indefinido"
 
-dados[dados$classificacaoFinal == "Confirmado Clinico-Epidemiologico",]$classificacaoFinal = "Confirmado Clínico-Epidemiológico"
-dados[dados$classificacaoFinal == "Confirmação Clínico Epidemiológico",]$classificacaoFinal = "Confirmado Clínico-Epidemiológico"
-dados[dados$classificacaoFinal == "Confirmação Laboratorial",]$classificacaoFinal = "Confirmado Laboratorial"
-dados[dados$classificacaoFinal == "Sindrome Gripal Nao Especificada",]$classificacaoFinal = "Síndrome Gripal Não Especificada"
-dados[dados$classificacaoFinal == "Confirmado Clinico-Imagem",]$classificacaoFinal = "Confirmado Clínico-Imagem"
+cond_x = dados$classificacaoFinal == "Confirmado Clinico-Epidemiologico"
+dados[cond_x,]$classificacaoFinal = "Confirmado Clínico-Epidemiológico"
+
+cond_x = dados$classificacaoFinal == "Confirmação Clínico Epidemiológico"
+dados[cond_x,]$classificacaoFinal = "Confirmado Clínico-Epidemiológico"
+
+cond_x = dados$classificacaoFinal == "Confirmação Laboratorial"
+dados[cond_x,]$classificacaoFinal = "Confirmado Laboratorial"
+
+cond_x = dados$classificacaoFinal == "Sindrome Gripal Nao Especificada"
+dados[cond_x,]$classificacaoFinal = "Síndrome Gripal Não Especificada"
+
+cond_x = dados$classificacaoFinal == "Confirmado Clinico-Imagem"
+dados[cond_x,]$classificacaoFinal = "Confirmado Clínico-Imagem"
 
 summary(dados$classificacaoFinal)
 dados$classificacaoFinal = factor(dados$classificacaoFinal)
-levels(dados$classificacaoFinal) = c("Cli.-Epid.", "Cli.-Img.", "Lab.", "Cri. Cli.", "Desc.", "SGNE", "Indefinido")
+levels(dados$classificacaoFinal) = c("Cli.-Epid.", "Cli.-Img.", "Lab.",
+                                     "Cri. Cli.", "Desc.", "SGNE", "Indefinido")
 summary(dados$classificacaoFinal)
 ```
 
-### Estado de residência
+## Estado de residência
 
 Campo obrigatório. A dimensão tem problemas de nulos.
 
@@ -445,12 +527,13 @@ levels(dados$estadoIBGE)[indi] = "Indefinido"
 summary(dados$estadoIBGE)
 ```
 
-### Municipio de residência
+## Municipio de residência
 
 Campo obrigatório. A dimensão tem problemas de nulos.
 
 ```{r}
-detect = str_detect(levels(dados$municipioIBGE), regex("[0-9][0-9][0-9][0-9][0-9][0-9][0-9]"))
+detect = str_detect(levels(dados$municipioIBGE),
+                    regex("[0-9][0-9][0-9][0-9][0-9][0-9][0-9]"))
 indi = which(!detect)
 levels(dados$municipioIBGE)[indi]
 
@@ -459,7 +542,7 @@ levels(dados$municipioIBGE)[indi] = "Indefinido"
 summary(dados$municipioIBGE)
 ```
 
-### Estado da notificação
+## Estado da notificação
 
 Campo gerado pelo sistema. A dimensão tem problemas de nulos.
 
@@ -470,12 +553,13 @@ levels(dados$estadoNotificacaoIBGE)[indi]
 
 levels(dados$estadoNotificacaoIBGE)[indi] = "Indefinido"
 
-dados[is.na(dados$estadoNotificacaoIBGE),]$estadoNotificacaoIBGE = "Indefinido"
+cond_x = is.na(dados$estadoNotificacaoIBGE)
+dados[cond_x,]$estadoNotificacaoIBGE = "Indefinido"
 
 summary(dados$estadoNotificacaoIBGE)
 ```
 
-### Municipio da notificação
+## Municipio da notificação
 
 Campo gerado pelo sistema. A dimensão tem problemas de nulos.
 
@@ -486,12 +570,13 @@ levels(dados$municipioNotificacaoIBGE)[indi]
 
 levels(dados$municipioNotificacaoIBGE)[indi] = "Indefinido"
 
-dados[is.na(dados$municipioNotificacaoIBGE),]$municipioNotificacaoIBGE = "Indefinido"
+cond_x = is.na(dados$municipioNotificacaoIBGE)
+dados[cond_x,]$municipioNotificacaoIBGE = "Indefinido"
 
 summary(dados$municipioNotificacaoIBGE)
 ```
 
-### Id
+## Id
 
 Procurando se temos registros duplicados. Não temos.
 
@@ -499,7 +584,7 @@ Procurando se temos registros duplicados. Não temos.
 dados[duplicated(dados$Id),]
 ```
 
-### Data do início dos síntomas
+## Data do início dos síntomas
 
 Data quando os dados foram pegos.
 
@@ -510,7 +595,10 @@ dateDownload = "2021-04-01"
 Campo obrigatório. A dimensão está fora do domínio. O paciente zero viajou para a Itália entre o 9 e 21 de fevereiro do 2020. Então a data do início dos síntomas mínima possível seria o 9 de fevereiro ([Primeiro caso confirmado de Covid-19 no Brasil ocorreu em SP e completa seis meses nesta quarta](https://g1.globo.com/sp/sao-paulo/noticia/2020/08/26/primeiro-caso-confirmado-de-covid-19-no-brasil-ocorreu-em-sp-e-completa-seis-meses-nesta-quarta.ghtml)). E a máxima data seria a data atual.
 
 ```{r}
-correctInterval = dados$dataInicioSintomas >= "2020-02-09" & dados$dataInicioSintomas <= dateDownload & !is.na(dados$dataInicioSintomas)
+cond_x = dados$dataInicioSintomas >= "2020-02-09"
+cond_x2 = cond_x & dados$dataInicioSintomas <= dateDownload
+correctInterval = cond_x2 & !is.na(dados$dataInicioSintomas)
+
 median_dataInicioSintomas = median(dados[correctInterval,]$dataInicioSintomas)
 
 dados[!correctInterval,]$dataInicioSintomas = median_dataInicioSintomas
@@ -518,12 +606,15 @@ dados[!correctInterval,]$dataInicioSintomas = median_dataInicioSintomas
 summary(dados$dataInicioSintomas)
 ```
 
-### Data da notificação
+## Data da notificação
 
 Campo obrigatório. A dimensão está fora do domínio. O paciente zero viajou para a Itália entre o 9 e 21 de fevereiro do 2020. Então a data da notificação mínima possível seria quando ele voltou ao Brasil o 21 de fevereiro ([Primeiro caso confirmado de Covid-19 no Brasil ocorreu em SP e completa seis meses nesta quarta](https://g1.globo.com/sp/sao-paulo/noticia/2020/08/26/primeiro-caso-confirmado-de-covid-19-no-brasil-ocorreu-em-sp-e-completa-seis-meses-nesta-quarta.ghtml)). E a máxima data seria a data atual.
 
 ```{r}
-correctInterval = dados$dataNotificacao >= "2020-02-21" & dados$dataNotificacao <= dateDownload & !is.na(dados$dataNotificacao)
+cond_x = dados$dataNotificacao >= "2020-02-21"
+cond_x2 = cond_x & dados$dataNotificacao <= dateDownload
+correctInterval = cond_x2 & !is.na(dados$dataNotificacao)
+
 median_dataNotificacao = median(dados[correctInterval,]$dataNotificacao)
 
 dados[!correctInterval,]$dataNotificacao = median_dataNotificacao
@@ -531,31 +622,35 @@ dados[!correctInterval,]$dataNotificacao = median_dataNotificacao
 summary(dados$dataNotificacao)
 ```
 
-### Data do teste
+## Data do teste
 
 A dimensão está fora do domínio. O paciente zero viajou para a Itália entre o 9 e 21 de fevereiro do 2020. Então a data do teste mínima possível seria quando ele voltou ao Brasil o 21 de fevereiro ([Primeiro caso confirmado de Covid-19 no Brasil ocorreu em SP e completa seis meses nesta quarta](https://g1.globo.com/sp/sao-paulo/noticia/2020/08/26/primeiro-caso-confirmado-de-covid-19-no-brasil-ocorreu-em-sp-e-completa-seis-meses-nesta-quarta.ghtml)). E a máxima data seria a data atual.
 
 ```{r}
-correctInterval = dados$dataTeste >= "2020-02-21" & dados$dataTeste <= dateDownload & !is.na(dados$dataTeste)
+cond_x = dados$dataTeste >= "2020-02-21"
+cond_x2 = cond_x & dados$dataTeste <= dateDownload
+correctInterval = cond_x2 & !is.na(dados$dataTeste)
 
 dados[!correctInterval,]$dataTeste = "2020-01-01"
 
 summary(dados$dataTeste)
 ```
 
-### Data de encerramento
+## Data de encerramento
 
 A dimensão está fora do domínio. O paciente zero viajou para a Itália entre o 9 e 21 de fevereiro do 2020. Então a data de encerramento mínima possível seria quando ele voltou ao Brasil o 21 de fevereiro ([Primeiro caso confirmado de Covid-19 no Brasil ocorreu em SP e completa seis meses nesta quarta](https://g1.globo.com/sp/sao-paulo/noticia/2020/08/26/primeiro-caso-confirmado-de-covid-19-no-brasil-ocorreu-em-sp-e-completa-seis-meses-nesta-quarta.ghtml)). E a máxima data seria a data atual.
 
 ```{r}
-correctInterval = dados$dataEncerramento >= "2020-02-21" & dados$dataEncerramento <= dateDownload & !is.na(dados$dataEncerramento)
+cond_x = dados$dataEncerramento >= "2020-02-21"
+cond_x2 = cond_x & dados$dataEncerramento <= dateDownload
+correctInterval = cond_x2 & !is.na(dados$dataEncerramento)
 
 dados[!correctInterval,]$dataEncerramento = "2020-01-01"
 
 summary(dados$dataEncerramento)
 ```
 
-## Últimas modificações
+# Últimas modificações
 
 Deletando a coluna dos IDs
 
@@ -563,7 +658,7 @@ Deletando a coluna dos IDs
 dados$id = NULL
 ```
 
-## Resultado final dos dados
+# Resultado final dos dados
 
 Mostrando os dados já tratados, menos síntomas nem condições
 
@@ -575,7 +670,7 @@ head(dados)
 summary(dados)
 ```
 
-## Salvando objeto dos dados
+# Salvando objeto dos dados
 
 Os dados são salvos num objeto do R
 
