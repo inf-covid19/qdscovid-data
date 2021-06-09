@@ -7,7 +7,7 @@ output:
     toc_depth: 3
     number_sections: true
     fig_caption: true
-    theme: darkly
+    theme: simplex
     highlight: breezedark
     df_print: paged
   pdf_document: 
@@ -42,6 +42,7 @@ library(ggplot2)
 library(sf)
 library(dplyr)
 library(crul)
+library(streamgraph)
 ```
 
 ### Carregando dados
@@ -109,6 +110,74 @@ ts_dataNotificacao %>%
   geom_area()
 ```
 
+## Stream Graph
+
+As duas datas consistentes são analisadas.
+
+### Data de inicio de sintomas
+
+Os dados que vamos usar são as contagens de condições por data tanto desde o inicio da pandemia como da última onda.
+
+```{r}
+df_dataInicioSintomas = data.frame(
+  dataInicioSintomas = dados$dataInicioSintomas,
+  condicoes = as.character(dados$condicoes),
+  value = rep(0.5, dim(dados)[1])
+)
+
+df_dataInicioSintomas = dados %>% group_by(dataInicioSintomas, condicoes) %>% summarise(n = n())
+
+df_dataInicioSintomas_last_wave = df_dataInicioSintomas[df_dataInicioSintomas$dataInicioSintomas >= "2021-01-01" & df_dataInicioSintomas$dataInicioSintomas <= "2022-01-01",]
+```
+
+Stream graph com as datas desde o inicio da pandemia e com uma interpolação cardinal e sem normalização:
+
+```{r}
+streamgraph(df_dataInicioSintomas, key = "condicoes", value = "n", date = "dataInicioSintomas",interpolate="cardinal", offset = "silhouette ", interactive = TRUE) %>% 
+  sg_fill_brewer("Paired") %>%
+  sg_legend(show = TRUE, label = "Condições")
+```
+
+Stream graph visualizado como normalized stacked bar chart da última onda:
+
+```{r}
+streamgraph(df_dataInicioSintomas_last_wave, key = "condicoes", value = "n", date = "dataInicioSintomas",interpolate="step", offset = "expand", interactive = TRUE) %>% 
+  sg_fill_brewer("Paired") %>%
+  sg_legend(show = TRUE, label = "Condições")
+```
+
+### Data da notificação
+
+Os dados que vamos usar são as contagens de condições por data tanto desde o inicio da pandemia como da última onda.
+
+```{r}
+df_dataNotificacao = data.frame(
+  dataNotificacao = dados$dataNotificacao,
+  condicoes = as.character(dados$condicoes),
+  value = rep(0.5, dim(dados)[1])
+)
+
+df_dataNotificacao = dados %>% group_by(dataNotificacao, condicoes) %>% summarise(n = n())
+
+df_dataNotificacao_last_wave = df_dataNotificacao[df_dataNotificacao$dataNotificacao >= "2021-01-01" & df_dataNotificacao$dataNotificacao <= "2022-01-01",]
+```
+
+Stream graph com as datas desde o inicio da pandemia e com uma interpolação cardinal e sem normalização:
+
+```{r}
+streamgraph(df_dataNotificacao, key = "condicoes", value = "n", date = "dataNotificacao",interpolate="cardinal", offset = "silhouette ", interactive = TRUE) %>% 
+  sg_fill_brewer("Paired") %>%
+  sg_legend(show = TRUE, label = "Condições")
+```
+
+Stream graph visualizado como normalized stacked bar chart da última onda:
+
+```{r}
+streamgraph(df_dataNotificacao_last_wave, key = "condicoes", value = "n", date = "dataNotificacao",interpolate="step", offset = "expand", interactive = TRUE) %>% 
+  sg_fill_brewer("Paired") %>%
+  sg_legend(show = TRUE, label = "Condições")
+```
+
 ## Mapa com coloração predominante
 
 Primeiro, criada uma tabela de contingencia dos municípios e das condições:
@@ -135,9 +204,11 @@ head(bestCondition)
 
 Logo, são baixados os mapas dos municípios e é feito um merge com a tabela gerada anteriormente:
 
-```{r}
+```{r, results='hide'}
 all_muni = read_municipality(code_muni = "RS", year= 2010)
+```
 
+```{r}
 all_muni = merge(x = all_muni, y = bestCondition, by = "code_muni", all.x = TRUE)
 
 head(all_muni)
