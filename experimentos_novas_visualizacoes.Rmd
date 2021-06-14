@@ -43,6 +43,10 @@ library(sf)
 library(dplyr)
 library(crul)
 library(streamgraph)
+library(Rtsne)
+library(stringr)
+library(ribge)
+library(ggpubr)
 ```
 
 ### Carregando dados
@@ -228,7 +232,7 @@ ggplot() +
   no_axis
 ```
 
-## Redução dimensional
+## Redução dimensional: Correspondece Analysis
 
 Ao pesquisar métodos de redução dimensional com dimensões categórias foi achado a seguinte informação: [5 Must-Know Dimensionality Reduction Techniques via Prince](https://towardsdatascience.com/5-must-know-dimensionality-reduction-techniques-via-prince-e6ffb27e55d1)
 
@@ -269,6 +273,186 @@ Com esse gráfico foi feito um pequeno experimento. É pegado um município que 
 E no QDSCOVID é selecionado só esse município (Garruchos, 4308656) e com isto dá pra ver que a obesidade é o valor predominante:
 
 ![Condições do município Garruchos](images/fig2.png)
+
+## Redução dimensional: t-SNE
+
+É gerado um data frame com as contagens de todas as variaveis usadas, menos a idade e as varaiveis temporais:
+
+```{r}
+sum_counties = dados %>%
+  group_by(municipioIBGE) %>%
+  summarise(n = n())
+
+sum_condicoes = as.data.frame.matrix(table(dados$municipioIBGE, dados$condicoes))
+municipioIBGE = rownames(sum_condicoes)
+dom_condicoes = colnames(sum_condicoes)[apply(sum_condicoes,1,which.max)]
+sum_condicoes = cbind(municipioIBGE, sum_condicoes, dom_condicoes)
+
+sum_sexo = as.data.frame.matrix(table(dados$municipioIBGE, dados$sexo))
+municipioIBGE = rownames(sum_sexo)
+dom_sexo = colnames(sum_sexo)[apply(sum_sexo,1,which.max)]
+sum_sexo = cbind(municipioIBGE, sum_sexo, dom_sexo)
+
+sum_profissionalSaude = as.data.frame.matrix(table(dados$municipioIBGE, dados$profissionalSaude))
+municipioIBGE = rownames(sum_profissionalSaude)
+dom_profissionalSaude = colnames(sum_profissionalSaude)[apply(sum_profissionalSaude,1,which.max)]
+sum_profissionalSaude = cbind(municipioIBGE, sum_profissionalSaude, dom_profissionalSaude)
+
+sum_estadoTeste = as.data.frame.matrix(table(dados$municipioIBGE, dados$estadoTeste))
+municipioIBGE = rownames(sum_estadoTeste)
+dom_estadoTeste = colnames(sum_estadoTeste)[apply(sum_estadoTeste,1,which.max)]
+sum_estadoTeste = cbind(municipioIBGE, sum_estadoTeste, dom_estadoTeste)
+
+sum_tipoTeste = as.data.frame.matrix(table(dados$municipioIBGE, dados$tipoTeste))
+municipioIBGE = rownames(sum_tipoTeste)
+dom_tipoTeste = colnames(sum_tipoTeste)[apply(sum_tipoTeste,1,which.max)]
+sum_tipoTeste = cbind(municipioIBGE, sum_tipoTeste, dom_tipoTeste)
+
+sum_resultadoTeste = as.data.frame.matrix(table(dados$municipioIBGE, dados$resultadoTeste))
+municipioIBGE = rownames(sum_resultadoTeste)
+dom_resultadoTeste = colnames(sum_resultadoTeste)[apply(sum_resultadoTeste,1,which.max)]
+sum_resultadoTeste = cbind(municipioIBGE, sum_resultadoTeste, dom_resultadoTeste)
+
+sum_evolucaoCaso = as.data.frame.matrix(table(dados$municipioIBGE, dados$evolucaoCaso))
+municipioIBGE = rownames(sum_evolucaoCaso)
+dom_evolucaoCaso = colnames(sum_evolucaoCaso)[apply(sum_evolucaoCaso,1,which.max)]
+sum_evolucaoCaso = cbind(municipioIBGE, sum_evolucaoCaso, dom_evolucaoCaso)
+
+sum_classificacaoFinal = as.data.frame.matrix(table(dados$municipioIBGE, dados$classificacaoFinal))
+municipioIBGE = rownames(sum_classificacaoFinal)
+dom_classificacaoFinal = colnames(sum_classificacaoFinal)[apply(sum_classificacaoFinal,1,which.max)]
+sum_classificacaoFinal = cbind(municipioIBGE, sum_classificacaoFinal, dom_classificacaoFinal)
+
+sum_data = sum_counties %>%
+  inner_join(sum_condicoes, by = "municipioIBGE") %>%
+  inner_join(sum_sexo, by = "municipioIBGE") %>%
+  inner_join(sum_profissionalSaude, by = "municipioIBGE") %>%
+  inner_join(sum_estadoTeste, by = "municipioIBGE") %>%
+  inner_join(sum_tipoTeste, by = "municipioIBGE") %>%
+  inner_join(sum_resultadoTeste, by = "municipioIBGE") %>%
+  inner_join(sum_evolucaoCaso, by = "municipioIBGE") %>%
+  inner_join(sum_classificacaoFinal, by = "municipioIBGE")
+
+head(sum_data)
+```
+
+É gerado outro data frame com a população dos municipios:
+
+```{r}
+population = populacao_municipios(2011)
+population = population[population$uf == "RS",]
+population = population[, names(population) %in% c("cod_municipio", "populacao")]
+colnames(population) = c("population", "municipioIBGE")
+population$municipioIBGE = as.character(population$municipioIBGE)
+
+head(population)
+```
+
+É feito um merge do data frame de dadso com a população;
+
+```{r}
+sum_data = sum_data %>% inner_join(population, by = "municipioIBGE")
+head(sum_data)
+```
+
+São geradas duas matrizes. Uma dividendo as contagens entre a contagem desse municipio e a outra matriz fazendo o mesmo com a densidade desse municipio:
+
+```{r}
+sum_matrix = data.matrix(subset(sum_data[, !str_detect(names(sum_data), "dom_")], select = -c(municipioIBGE, n, population)))
+
+sum_matrix = sum_matrix / sum_data$n
+sum_matrix_pop = sum_matrix / sum_data$population
+
+head(as.data.frame(sum_matrix))
+head(as.data.frame(sum_matrix_pop))
+```
+
+Calculando os valores do t-SNE para diferentes perplexidades e iterações para a matriz normal e a matriz de densidade:
+
+```{r}
+tsne_out_5_1k <- Rtsne(sum_matrix, perplexity = 5,theta = 0.0, max_iter = 1000, verbose = FALSE)
+tsne_out_5_5k <- Rtsne(sum_matrix, perplexity = 5,theta = 0.0, max_iter = 5000, verbose = FALSE) 
+tsne_out_30_1k <- Rtsne(sum_matrix, perplexity = 30,theta = 0.0, max_iter = 1000, verbose = FALSE) 
+tsne_out_30_5k <- Rtsne(sum_matrix, perplexity = 30,theta = 0.0, max_iter = 5000, verbose = FALSE) 
+tsne_out_50_1k <- Rtsne(sum_matrix, perplexity = 50,theta = 0.0, max_iter = 1000, verbose = FALSE) 
+tsne_out_50_5k <- Rtsne(sum_matrix, perplexity = 50,theta = 0.0, max_iter = 5000, verbose = FALSE) 
+
+tsne_out_pop_5_1k <- Rtsne(sum_matrix_pop, perplexity = 5,theta = 0.0, max_iter = 1000, verbose = FALSE) 
+tsne_out_pop_5_5k <- Rtsne(sum_matrix_pop, perplexity = 5,theta = 0.0, max_iter = 5000, verbose = FALSE) 
+tsne_out_pop_30_1k <- Rtsne(sum_matrix_pop, perplexity = 30,theta = 0.0, max_iter = 1000, verbose = FALSE) 
+tsne_out_pop_30_5k <- Rtsne(sum_matrix_pop, perplexity = 30,theta = 0.0, max_iter = 5000, verbose = FALSE) 
+tsne_out_pop_50_1k <- Rtsne(sum_matrix_pop, perplexity = 50,theta = 0.0, max_iter = 1000, verbose = FALSE) 
+tsne_out_pop_50_5k <- Rtsne(sum_matrix_pop, perplexity = 50,theta = 0.0, max_iter = 5000, verbose = FALSE)
+```
+
+Criando a função que vai gerar os gráficos de cada t-SNE:
+
+```{r}
+plot_tsne <- function(tsne_out, title = "") {
+  tsne_plot = data.frame(x = tsne_out$Y[,1], y = tsne_out$Y[,2],
+                         condicoes = sum_data$dom_condicoes,
+                         sexo = sum_data$dom_sexo,
+                         profissionalSaude = sum_data$dom_profissionalSaude,
+                         estadoTeste = sum_data$dom_estadoTeste,
+                         tipoTeste = sum_data$dom_tipoTeste,
+                         resultadoTeste = sum_data$dom_resultadoTeste,
+                         evolucaoCaso = sum_data$dom_evolucaoCaso,
+                         classificacaoFinal = sum_data$dom_classificacaoFinal)
+
+  th = theme(legend.position = "bottom", legend.text=element_text(size=5), legend.title=element_text(size=5))
+  
+  p1 = ggplot(tsne_plot) + geom_point(aes(x = x, y = y, color = condicoes)) + th
+  p2 = ggplot(tsne_plot) + geom_point(aes(x = x, y = y, color = sexo)) + th
+  p3 = ggplot(tsne_plot) + geom_point(aes(x = x, y = y, color = profissionalSaude)) + th
+  p4 = ggplot(tsne_plot) + geom_point(aes(x = x, y = y, color = estadoTeste)) + th
+  p5 = ggplot(tsne_plot) + geom_point(aes(x = x, y = y, color = tipoTeste)) + th
+  p6 = ggplot(tsne_plot) + geom_point(aes(x = x, y = y, color = resultadoTeste)) + th
+  p7 = ggplot(tsne_plot) + geom_point(aes(x = x, y = y, color = evolucaoCaso)) + th
+  p8 = ggplot(tsne_plot) + geom_point(aes(x = x, y = y, color = classificacaoFinal)) + th
+
+
+  figure = ggarrange(p1, p2, p3, p4, p5, p6, p7, p8, ncol = 2, nrow = 4)
+
+  title_final = paste(title, ", cost=", as.character(tail(tsne_out$itercosts, n = 1)), sep = "")
+  
+  annotate_figure(figure, top = text_grob(title_final, color = "black", face = "bold", size = 14))
+}
+```
+
+Printando os gráficos:
+
+```{r, fig.width = 8, fig.height= 16}
+plot_tsne(tsne_out_5_1k, title = "t-SNE perplexity=5, iter=1000")
+plot_tsne(tsne_out_5_5k, title = "t-SNE perplexity=5, iter=5000")
+plot_tsne(tsne_out_30_1k, title = "t-SNE perplexity=30, iter=1000")
+plot_tsne(tsne_out_30_5k, title = "t-SNE perplexity=30, iter=5000")
+plot_tsne(tsne_out_50_1k, title = "t-SNE perplexity=50, iter=1000")
+plot_tsne(tsne_out_50_5k, title = "t-SNE perplexity=50, iter=5000")
+
+plot_tsne(tsne_out_pop_5_1k, title = "t-SNE with dens. calc. perplexity=5, iter=1000")
+plot_tsne(tsne_out_pop_5_5k, title = "t-SNE with dens. calc. perplexity=5, iter=5000")
+plot_tsne(tsne_out_pop_30_1k, title = "t-SNE with dens. calc. perplexity=30, iter=1000")
+plot_tsne(tsne_out_pop_30_5k, title = "t-SNE with dens. calc. perplexity=30, iter=5000")
+plot_tsne(tsne_out_pop_50_1k, title = "t-SNE with dens. calc. perplexity=50, iter=1000")
+plot_tsne(tsne_out_pop_50_5k, title = "t-SNE with dens. calc. perplexity=50, iter=5000")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
