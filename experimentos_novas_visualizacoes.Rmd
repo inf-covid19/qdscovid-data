@@ -358,10 +358,10 @@ head(sum_data)
 São geradas duas matrizes. Uma dividendo as contagens entre a contagem desse municipio e a outra matriz fazendo o mesmo com a densidade desse municipio:
 
 ```{r}
-sum_matrix = data.matrix(subset(sum_data[, !str_detect(names(sum_data), "dom_")], select = -c(municipioIBGE, n, population)))
+sum_matrix_base = data.matrix(subset(sum_data[, !str_detect(names(sum_data), "dom_")], select = -c(municipioIBGE, n, population)))
 
-sum_matrix = sum_matrix / sum_data$n
-sum_matrix_pop = sum_matrix / sum_data$population
+sum_matrix = sum_matrix_base / sum_data$n
+sum_matrix_pop = cbind(sum_data$n/sum_data$population, sum_matrix_base / sum_data$n)
 
 head(as.data.frame(sum_matrix))
 head(as.data.frame(sum_matrix_pop))
