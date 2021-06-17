@@ -47,6 +47,8 @@ library(Rtsne)
 library(stringr)
 library(ribge)
 library(ggpubr)
+library(RColorBrewer)
+library(shades)
 ```
 
 ### Carregando dados
@@ -194,14 +196,20 @@ head(contingency_table)
 Desde esta tabela é criado um dataframe dos municípios com a condição predominante:
 
 ```{r}
+prop <- function(x) {
+  max(x)/sum(x)
+}
+
 contingency_table = as.data.frame.matrix(contingency_table)
 
 code_muni = rownames(contingency_table)
 condicoes = colnames(contingency_table)[apply(contingency_table,1,which.max)]
+condicoes_prop = as.numeric(apply(contingency_table,1, prop))
 
-bestCondition = cbind(code_muni, condicoes)
+bestCondition = cbind(code_muni, condicoes, condicoes_prop)
 bestCondition = as.data.frame(bestCondition)
 bestCondition$code_muni = as.numeric(bestCondition$code_muni)
+bestCondition$condicoes_prop = as.numeric(bestCondition$condicoes_prop)
 
 head(bestCondition)
 ```
@@ -220,13 +228,38 @@ head(all_muni)
 
 Finalmente, é gerado o mapa com condição predominante:
 
-```{r}
+```{r, fig.width = 8, fig.height= 20}
 no_axis = theme(axis.title=element_blank(),
                 axis.text=element_blank(),
                 axis.ticks=element_blank())
 
-ggplot() +
-  geom_sf(data=all_muni, aes(fill=condicoes), color="#2D3E50", size=.15, show.legend = TRUE) +
+colors = brewer.pal(9, "Set1")
+
+cond = levels(as.factor(condicoes))
+
+map_plot <- function(condicao, color) {
+  th = theme(legend.position = "bottom", legend.text=element_text(size=5), legend.title=element_text(size=5))
+
+  p = ggplot() + geom_sf(data=all_muni[all_muni$condicoes == condicao,], aes(fill=condicoes_prop), color="#818b96", size=.15, show.legend = TRUE) +
+  scale_fill_gradient(limits = c(0.0, 1.0), low = brightness(color, 1.0), high = brightness(color, 0.0)) + ggtitle(condicao)  + th  
+  
+  return(p)
+}
+
+th = theme(legend.position = "bottom", legend.text=element_text(size=5), legend.title=element_text(size=5))
+
+p_ini = ggplot() + geom_sf(data=all_muni, aes(fill=condicoes), color="#2D3E50", size=.15, show.legend = TRUE) +
+  scale_fill_manual(values = colors) + ggtitle("Todos")  + th 
+
+ggarrange(p_ini,
+          map_plot(cond[1], colors[1]),
+          map_plot(cond[2], colors[2]),
+          map_plot(cond[3], colors[3]),
+          map_plot(cond[4], colors[4]),
+          map_plot(cond[5], colors[5]),
+          map_plot(cond[6], colors[6]),
+          map_plot(cond[7], colors[7]),
+          map_plot(cond[8], colors[8]), ncol = 2, nrow = 5) +   
   labs(subtitle="Municipalities of RS", size=8) +
   theme_minimal() +
   no_axis
